@@ -352,17 +352,18 @@ export class PornstarResolver {
         console.log("url",url)
         console.log(url.split('?')[0]);
         console.log(pornstar.pornstar_picture_path);
-        pornstar.pornstar_picture_path = url.split('?')[0] + "?" + id;
+        //pornstar.pornstar_picture_path = url.split('?')[0] + "?" + id;
+        pornstar.pornstar_picture_path = "https://pub-f8c29b76b6bc4836aac4b8dabb8b6b25.r2.dev/" + updatedKey + "?" + id;
       } else {
         url = await createPresignedUrlWithClient({ key: id });
-        pornstar.pornstar_picture_path = url.split('?')[0];
+        pornstar.pornstar_picture_path = "https://pub-f8c29b76b6bc4836aac4b8dabb8b6b25.r2.dev/" + id;
       }
 
       console.log(!req)
       const userRepository = AppDataSource.getRepository(UserAccount);
       const user = await userRepository.findOneBy({
-        //user_id: req.session.userId,
-        user_id: 58,
+        user_id: req.session.userId,
+        //user_id: 58,
       });
       if (user == null) {
         throw new GraphQLError('User not found.', {
