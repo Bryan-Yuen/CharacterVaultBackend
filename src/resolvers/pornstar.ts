@@ -84,7 +84,7 @@ export class PornstarResolver {
       var url = '';
       if (newPornstarInput.pornstar_picture) {
         url = await createPresignedUrlWithClient({ key: id });
-
+        console.log("im hit in picture if")
         //pornstar.pornstar_picture_path = url.split('?')[0];
         pornstar.pornstar_picture_path = "https://pub-f8c29b76b6bc4836aac4b8dabb8b6b25.r2.dev/" + id
       }

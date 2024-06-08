@@ -78,7 +78,7 @@ const startServer = async () => {
 
   app.use(
     cors({
-      origin: ["http://localhost:3000", "http://192.168.0.208:3000"],
+      origin: process.env.PRODUCTION ? ["https://myfapsheettestingwebsite.us"] : ["http://localhost:3000", "http://192.168.0.208:3000"],
       //origin: ['http://localhost:3000',],
       credentials: true,
     })
