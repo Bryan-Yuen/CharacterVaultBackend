@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc-watch --onSuccess \"node .\"",
-    "dev": "ts-node-dev index.ts",
+    "dev": "cd src && ts-node-dev index.ts",
     "watch": "nodemon index.ts"
   },
   "keywords": [],
