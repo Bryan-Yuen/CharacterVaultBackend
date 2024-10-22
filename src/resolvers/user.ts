@@ -15,7 +15,6 @@ import { GraphQLError } from "graphql";
 import RegisterUserInput from "../inputClasses/RegisterUserInput";
 import LoginUserInput from "../inputClasses/LoginUserInput";
 import { UserProfileReturn } from "../returnTypes/UserProfileReturn";
-import { Subscription } from "../entities/Subscription";
 import { UserLoginHistory } from "../entities/UserLoginHistory";
 import { SuccessResponse } from "../returnTypes/SuccessResponse";
 
@@ -37,7 +36,7 @@ export class UserResolver {
     else return false;
   }
 
-  @Mutation(() => UserAccount)
+  @Mutation(() => SuccessResponse)
   @UseMiddleware(rateLimit(10, 60 * 60 * 24))
   async registerUser(
     @Arg("registerUserData") registerUserData: RegisterUserInput,
@@ -81,10 +80,11 @@ export class UserResolver {
   
       await userLoginHistoryRepository.save(userLoginHistory);
 
+      //return user;
       return {
         message: "User registration successful!",
-        success: true,
-      };
+        success: true
+      }
     } catch (error) {
       if (error instanceof GraphQLError) {
         throw error;
@@ -98,7 +98,7 @@ export class UserResolver {
   }
 
   //return payload
-  @Mutation(() => UserAccount)
+  @Mutation(() => SuccessResponse)
   // rate limit 25 times in 1 hour seems fair
   @UseMiddleware(rateLimit(25, 60 * 60))
   async loginUser(
@@ -131,9 +131,9 @@ export class UserResolver {
     } else {
       req.session.userId = user.user_id;
       return {
-        message: "Login successful!",
-        success: true,
-      };
+        message: "User login successful!",
+        success: true
+      }
     }
     } catch (error) {
       if (error instanceof GraphQLError) {
@@ -277,34 +277,6 @@ export class UserResolver {
         },
       });
     }
-  }
-
-  @Query(() => Boolean)
-  @UseMiddleware(isAuth)
-  @UseMiddleware(rateLimit(50, 60 * 5))
-  async checkUserPremium(@Ctx() { req }: MyContext): Promise<Boolean> {
-    const subscriptionRepository = AppDataSource.getRepository(Subscription);
-    const userRepository = AppDataSource.getRepository(UserAccount);
-    const user = await userRepository.findOneBy({
-      user_id: req.session.userId,
-    });
-
-    let subscriptionExists = null;
-    if (user) {
-      subscriptionExists = await subscriptionRepository.findBy({
-        user: user,
-      });
-    } else {
-      throw new GraphQLError("User is not found.", {
-        extensions: {
-          code: "USER_NOT_FOUND",
-        },
-      });
-    }
-    console.log("im in checkuserpremium");
-    console.log(subscriptionExists);
-    if (subscriptionExists) return true;
-    else return false;
   }
 
   // make sure to do some input validation on the input class file

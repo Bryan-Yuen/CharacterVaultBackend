@@ -4,9 +4,6 @@ import { Pornstar } from "../entities/Pornstar";
 import { PornstarTag } from "../entities/PornstarTag";
 import { UserTag } from "../entities/UserTag";
 import { PornstarLink } from "../entities/PornstarLink";
-import { Subscription } from "../entities/Subscription";
-import { PaymentProfile } from "../entities/PaymentProfile";
-import { Invoice } from "../entities/Invoice";
 import { UserLoginHistory } from "../entities/UserLoginHistory";
 import 'dotenv/config';
 
@@ -21,7 +18,7 @@ const AppDataSource = new DataSource({
   username: "postgres",
   password: process.env.DB_PASSWORD,
   database: "myfaplist",
-  entities: [UserAccount,Pornstar,PornstarTag,UserTag,PornstarLink,Subscription,PaymentProfile, Invoice, UserLoginHistory],
+  entities: [UserAccount,Pornstar,PornstarTag,UserTag,PornstarLink, UserLoginHistory],
   // use this to check database is following hte rules and strucutre, use only in development do not use in prodution
   //synchronize: true,
   logging: false,

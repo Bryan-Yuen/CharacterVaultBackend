@@ -38,7 +38,7 @@ export const createPresignedUrlWithClient = async ({
   return getSignedUrl(client, command, { expiresIn: 3600 });
 };
 
-export const deleteObjectWithClient = ({
+export const deleteObjectWithClient = async ({
   key,
 }: {
   key: string;

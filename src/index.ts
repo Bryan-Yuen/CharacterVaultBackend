@@ -4,7 +4,6 @@ import { UserResolver } from "./resolvers/user";
 import { PornstarResolver } from "./resolvers/pornstar";
 import { UserTagResolver } from "./resolvers/userTag";
 import { ContactResolver } from "./resolvers/contact";
-import { PaymentResolver } from "./resolvers/payment";
 import "reflect-metadata";
 import myFormatError from "./utilities/errorFormatter";
 import AppDataSource from "./config/db";
@@ -12,21 +11,11 @@ import Redis from "ioredis";
 import session, { Session } from "express-session";
 import RedisStore from "connect-redis";
 import cors from "cors";
-import { Worker } from "bullmq";
 import { expressMiddleware } from "@apollo/server/express4";
 import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
 import express, { Request, Response } from "express";
 import http from "http";
-import { cancelSubscriptionJob } from "./jobs/CancelSubscriptionJob";
-import { checkSubscriptionStatusJob } from "./jobs/CheckSubscriptionStatusJob";
 import "dotenv/config";
-
-const bullMQRedisConnectionSettings = {
-  connection: {
-    host: "127.0.0.1",
-    port: 6379,
-  },
-};
 
 export type MyContext = {
   req: Request & { session?: Session & { userId?: number } };
@@ -43,37 +32,6 @@ const startServer = async () => {
 
   redisClient.on("error", (error) => {
     console.error("Redis connection error:", error);
-  });
-
-  // Create a BullMQ worker
-  const cancelSubscriptionWorker = new Worker(
-    "cancelSubscriptionQueue",
-    cancelSubscriptionJob,
-    bullMQRedisConnectionSettings
-  );
-
-  const checkSubscriptionStatusWorker = new Worker(
-    "checkSubscriptionStatusQueue",
-    checkSubscriptionStatusJob,
-    bullMQRedisConnectionSettings
-  );
-
-  // Event listeners for worker events
-  cancelSubscriptionWorker.on("completed", (job) => {
-    console.log(`${job.id} has completed!`);
-  });
-
-  cancelSubscriptionWorker.on("failed", (job, err) => {
-    console.log(`${job?.id} has failed with ${err.message}`);
-  });
-
-  // Event listeners for worker events
-  checkSubscriptionStatusWorker.on("completed", (job) => {
-    console.log(`${job.id} has completed!`);
-  });
-
-  checkSubscriptionStatusWorker.on("failed", (job, err) => {
-    console.log(`${job?.id} has failed with ${err.message}`);
   });
 
   app.use(
@@ -112,7 +70,6 @@ const startServer = async () => {
         PornstarResolver,
         UserTagResolver,
         ContactResolver,
-        PaymentResolver,
       ],
       // you need this to be true to use class-validator decorators
       validate: { forbidUnknownValues: false },

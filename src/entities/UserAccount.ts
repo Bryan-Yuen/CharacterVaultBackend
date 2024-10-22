@@ -2,10 +2,7 @@ import { Entity, Column, PrimaryGeneratedColumn, OneToMany, OneToOne} from "type
 import { ObjectType, Field } from "type-graphql";
 import { Pornstar } from "./Pornstar";
 import { UserTag } from "./UserTag";
-import { Subscription } from "./Subscription";
-import { PaymentProfile } from "./PaymentProfile";
 import { UserLoginHistory } from "./UserLoginHistory";
-import { Invoice } from "./Invoice";
 
 /*
 If you don't specify a table name using the @Entity() 
@@ -36,21 +33,9 @@ export class UserAccount {
     @OneToMany(() => Pornstar, (pornstar) => pornstar.user)
     pornstars: Pornstar[];
 
-    @OneToMany(() => Subscription, (subscription) => subscription.user)
-    subscriptions: Subscription[];
-
-    // will change to one to one
- 
-    @OneToOne(() => PaymentProfile, (paymentProfile) => paymentProfile.user)
-    paymentProfile: PaymentProfile;
-
     @OneToOne(() => UserLoginHistory, (paymentProfile) => paymentProfile.user)
     userLoginHistory: UserLoginHistory;
 
-
     @OneToMany(() => UserTag, (userTag) => userTag.user)
     userTags: UserTag[];
-
-    @OneToMany(() => Invoice, (invoice) => invoice.user)
-    invoices: Invoice[];
 }
