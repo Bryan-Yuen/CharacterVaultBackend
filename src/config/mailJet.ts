@@ -1,16 +1,17 @@
 import { SendEmailV3_1, LibraryResponse, Client } from "node-mailjet";
 import 'dotenv/config';
-
+/*
 if (!process.env.API_KEY) {
   throw new Error('API_KEY environment variable is not defined');
 }
 if (!process.env.API_SECRET) {
   throw new Error('API_SECRET environment variable is not defined');
 }
+  */
 
 const mailjet = new Client({
-  apiKey: process.env.API_KEY,
-  apiSecret: process.env.API_SECRET,
+  apiKey: process.env.API_KEY || "bob",
+  apiSecret: process.env.API_SECRET || "bob",
 });
 
 // will need the user's email address as a variable

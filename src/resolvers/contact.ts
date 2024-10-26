@@ -5,7 +5,8 @@ import { MyContext } from "../index";
 import { GraphQLError } from "graphql"
 import { isAuth } from "../middleware/isAuth";
 import {rateLimit} from "../middleware/rateLimit"
-import { sendHomePageContactEmail, sendLoggedInContactEmail } from "../config/mailJet";
+import { sendLoggedInContactEmail } from "../config/mailJet";
+import { sendHomePageContactEmail } from "../emails/contactFormEmail";
 
 @Resolver(UserAccount)
 export class ContactResolver {
@@ -21,7 +22,7 @@ export class ContactResolver {
     @Arg("message") message: string
   ): Promise<Boolean> {
     try {
-      sendHomePageContactEmail(email, message)
+      await sendHomePageContactEmail(email, message)
       return true;
     } catch (error) {
       console.log(error);
@@ -46,7 +47,7 @@ export class ContactResolver {
       if (!user) {
         throw new GraphQLError("User not found.", {
           extensions: {
-            code: "USER_NOT_FOUND",
+            code: "EMAIL_NOT_REGISTERED",
           },
         });
       }

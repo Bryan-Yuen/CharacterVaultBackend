@@ -24,11 +24,12 @@ import { isAuth } from "../middleware/isAuth";
 import { rateLimit } from "../middleware/rateLimit";
 import {
   sendChangeEmailAddressConfirmationEmail,
-  sendForgotPasswordEmail,
 } from "../config/mailJet";
+import { sendTest } from "../emails/forgotPasswordEmail";
 
 @Resolver(UserAccount)
 export class UserResolver {
+  // might need a rate limit here just in case someone use bot to spam refresh althought this is a cheap operation
   @Query(() => Boolean)
   async checkIfLoggedin(@Ctx() { req }: MyContext): Promise<Boolean> {
     console.log("im in checkifloggedin", req.session.userId);
@@ -168,52 +169,57 @@ export class UserResolver {
 
   @Mutation(() => Boolean)
   // this sends an email so only limiting to 10 emails a day
-  @UseMiddleware(rateLimit(10, 60 * 60 * 24))
+  //@UseMiddleware(rateLimit(10, 60 * 60 * 24))
   async forgotPassword(
     @Arg("email") email: string,
     @Ctx() { redis }: MyContext
   ): Promise<Boolean> {
     try {
-      console.log("hi?");
-      console.log(email);
       const userRepository = AppDataSource.getRepository(UserAccount);
-      const userEmailExists = await userRepository.findOneBy({
+      const userEmail = await userRepository.findOneBy({
         user_email: email,
       });
-      if (userEmailExists === null) {
+      if (userEmail === null) {
         throw new GraphQLError("Email does not exist.", {
           extensions: {
-            code: "EMAIL_DOES_NOT_EXISTS",
+            code: "EMAIL_NOT_REGISTERED",
           },
         });
       }
-      console.log(userEmailExists);
+      console.log(userEmail);
       const token = uuidv4();
 
+      // expires in 1 hour
       await redis.set(
         token,
-        userEmailExists.user_id,
+        userEmail.user_id,
         "EX",
-        1000 * 60 * 60 * 24 * 3
-      ); // 3 days
+        1000 * 60 * 60
+      );
 
-      const changePasswordUrl = `http://localhost:3000/change-password?token=${token}`;
-
-      sendForgotPasswordEmail(changePasswordUrl);
+      const changePasswordUrl = `http://192.168.0.208:3000/change-password?token=${token}`;
+      await sendTest(userEmail.user_username, changePasswordUrl)
+      //sendForgotPasswordEmail(changePasswordUrl);
       return true;
     } catch (error) {
-      console.log(error);
-      return false;
+      if (error instanceof GraphQLError) {
+        throw error;
+      } else {
+        console.error("Unexpected error during reset password link:", error);
+        throw new GraphQLError("Internal server error during reset password link.", {
+          extensions: { code: "INTERNAL_SERVER_ERROR" },
+        });
+      }
     }
   }
 
-  @Mutation(() => UserAccount)
+  @Mutation(() => Boolean)
   @UseMiddleware(rateLimit(50, 60 * 5))
   async changePassword(
     @Arg("token") token: string,
     @Arg("newPassword") newPassword: string,
     @Ctx() { redis }: MyContext
-  ): Promise<UserAccount> {
+  ): Promise<Boolean> {
     try {
       const userId = await redis.get(token);
       if (!userId) {
@@ -247,13 +253,19 @@ export class UserResolver {
       // this might not be needed just on dashboard page
       //user.user_last_login_date_time = new Date();
 
-      const updatedUser = await userRepository.save(user);
+      await userRepository.save(user);
       await redis.del(token);
 
-      return updatedUser;
-    } catch (err) {
-      console.log(err);
-      return err;
+      return true;
+    } catch (error) {
+      if (error instanceof GraphQLError) {
+        throw error;
+      } else {
+        console.error("Unexpected error during change password:", error);
+        throw new GraphQLError("Internal server error during change password.", {
+          extensions: { code: "INTERNAL_SERVER_ERROR" },
+        });
+      }
     }
   }
 
