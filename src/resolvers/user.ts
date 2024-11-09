@@ -1,5 +1,4 @@
 import { UserAccount } from "../entities/UserAccount";
-//const userRepository = AppDataSource.getRepository(UserAccount);
 import {
   Resolver,
   Mutation,
@@ -9,23 +8,20 @@ import {
   UseMiddleware,
 } from "type-graphql";
 import AppDataSource from "../config/db";
-//import { MaxLength, MinLength, Length, Matches } from "class-validator";
 import bcrypt from "bcrypt";
 import { GraphQLError } from "graphql";
-import RegisterUserInput from "../inputClasses/RegisterUserInput";
-import LoginUserInput from "../inputClasses/LoginUserInput";
+import RegisterUserInput from "../inputTypes/RegisterUserInput";
+import LoginUserInput from "../inputTypes/LoginUserInput";
 import { UserProfileReturn } from "../returnTypes/UserProfileReturn";
 import { UserLoginHistory } from "../entities/UserLoginHistory";
 import { SuccessResponse } from "../returnTypes/SuccessResponse";
-
 import { MyContext } from "../index";
 import { v4 as uuidv4 } from "uuid";
 import { isAuth } from "../middleware/isAuth";
 import { rateLimit } from "../middleware/rateLimit";
-import {
-  sendChangeEmailAddressConfirmationEmail,
-} from "../config/mailJet";
-import { sendTest } from "../emails/forgotPasswordEmail";
+import { sendForgotPasswordEmail } from "../emails/forgotPasswordEmail";
+import { sendWelcomeEmail } from "../emails/welcomeEmail";
+import { sendChangeEmailAddressEmail } from "../emails/changeEmailAddressEmail";
 
 @Resolver(UserAccount)
 export class UserResolver {
@@ -44,48 +40,61 @@ export class UserResolver {
     @Ctx() { req }: MyContext
   ): Promise<SuccessResponse> {
     const userRepository = AppDataSource.getRepository(UserAccount);
-    const userLoginHistoryRepository = AppDataSource.getRepository(UserLoginHistory);
-  
+    const userLoginHistoryRepository =
+      AppDataSource.getRepository(UserLoginHistory);
+
     try {
       const [userEmailExists, userUsernameExists] = await Promise.all([
         userRepository.findOneBy({ user_email: registerUserData.user_email }),
-        userRepository.findOneBy({ user_username: registerUserData.user_username }),
+        userRepository.findOneBy({
+          user_username: registerUserData.user_username,
+        }),
       ]);
-  
+
       if (userEmailExists) {
-        throw new GraphQLError("Registration failed. Email is already in use.", {
-          extensions: { code: "EMAIL_EXISTS" },
-        });
+        throw new GraphQLError(
+          "Registration failed. Email is already in use.",
+          {
+            extensions: { code: "EMAIL_EXISTS" },
+          }
+        );
       }
-  
+
       if (userUsernameExists) {
         throw new GraphQLError("Registration failed. Username already taken", {
           extensions: { code: "USERNAME_TAKEN" },
         });
       }
-  
-      const hashedPassword = await bcrypt.hash(registerUserData.user_password, 10);
+
+      const hashedPassword = await bcrypt.hash(
+        registerUserData.user_password,
+        10
+      );
       const user = new UserAccount();
       user.user_username = registerUserData.user_username;
       user.user_email = registerUserData.user_email;
       user.user_password = hashedPassword;
-  
+
       const saveUser = await AppDataSource.manager.save(user);
-  
+
       req.session.userId = saveUser.user_id;
-  
+
       const userLoginHistory = new UserLoginHistory();
       userLoginHistory.user_created_date_time = new Date();
       userLoginHistory.user_last_login_date_time = new Date();
       userLoginHistory.user = saveUser;
-  
+
       await userLoginHistoryRepository.save(userLoginHistory);
 
       //return user;
+      await sendWelcomeEmail(
+        registerUserData.user_username,
+        registerUserData.user_email
+      );
       return {
         message: "User registration successful!",
-        success: true
-      }
+        success: true,
+      };
     } catch (error) {
       if (error instanceof GraphQLError) {
         throw error;
@@ -108,34 +117,35 @@ export class UserResolver {
   ): Promise<SuccessResponse> {
     try {
       const userRepository = AppDataSource.getRepository(UserAccount);
-    const user = await userRepository.findOneBy({
-      user_email: loginUserData.user_email,
-    });
-    if (user === null) {
-      throw new GraphQLError("Email is not registered.", {
-        extensions: {
-          code: "EMAIL_NOT_REGISTERED",
-        },
+      const user = await userRepository.findOneBy({
+        user_email: loginUserData.user_email,
       });
-    }
-    const match = await bcrypt.compare(
-      loginUserData.user_password,
-      user.user_password
-    );
-    if (!match) {
-      console.log("im in incorrect");
-      throw new GraphQLError("Invalid email and password combination.", {
-        extensions: {
-          code: "INCORRECT_PASSWORD",
-        },
-      });
-    } else {
-      req.session.userId = user.user_id;
-      return {
-        message: "User login successful!",
-        success: true
+      if (user === null) {
+        throw new GraphQLError("Email is not registered.", {
+          extensions: {
+            code: "EMAIL_NOT_REGISTERED",
+          },
+        });
       }
-    }
+      const match = await bcrypt.compare(
+        loginUserData.user_password,
+        user.user_password
+      );
+      if (!match) {
+        console.log("im in incorrect");
+        throw new GraphQLError("Invalid email and password combination.", {
+          extensions: {
+            code: "INCORRECT_PASSWORD",
+          },
+        });
+      } else {
+        console.log("checking user_id", user.user_id);
+        req.session.userId = user.user_id;
+        return {
+          message: "User login successful!",
+          success: true,
+        };
+      }
     } catch (error) {
       if (error instanceof GraphQLError) {
         throw error;
@@ -190,15 +200,10 @@ export class UserResolver {
       const token = uuidv4();
 
       // expires in 1 hour
-      await redis.set(
-        token,
-        userEmail.user_id,
-        "EX",
-        1000 * 60 * 60
-      );
+      await redis.set(token, userEmail.user_id, "EX", 1000 * 60 * 60);
 
       const changePasswordUrl = `http://192.168.0.208:3000/change-password?token=${token}`;
-      await sendTest(userEmail.user_username, changePasswordUrl)
+      await sendForgotPasswordEmail(userEmail.user_username, changePasswordUrl);
       //sendForgotPasswordEmail(changePasswordUrl);
       return true;
     } catch (error) {
@@ -206,9 +211,12 @@ export class UserResolver {
         throw error;
       } else {
         console.error("Unexpected error during reset password link:", error);
-        throw new GraphQLError("Internal server error during reset password link.", {
-          extensions: { code: "INTERNAL_SERVER_ERROR" },
-        });
+        throw new GraphQLError(
+          "Internal server error during reset password link.",
+          {
+            extensions: { code: "INTERNAL_SERVER_ERROR" },
+          }
+        );
       }
     }
   }
@@ -262,9 +270,12 @@ export class UserResolver {
         throw error;
       } else {
         console.error("Unexpected error during change password:", error);
-        throw new GraphQLError("Internal server error during change password.", {
-          extensions: { code: "INTERNAL_SERVER_ERROR" },
-        });
+        throw new GraphQLError(
+          "Internal server error during change password.",
+          {
+            extensions: { code: "INTERNAL_SERVER_ERROR" },
+          }
+        );
       }
     }
   }
@@ -390,9 +401,9 @@ export class UserResolver {
         1000 * 60 * 60 * 24 * 3
       ); // 3 days
 
-      const changeEmailUrl = `http://localhost:3000/confirm-new-email?token=${token}`;
+      const changeEmailUrl = `http://192.168.0.208:3000/confirm-new-email?token=${token}`;
 
-      sendChangeEmailAddressConfirmationEmail(changeEmailUrl);
+      sendChangeEmailAddressEmail(user.user_username, changeEmailUrl);
       return true;
     } catch (error) {
       console.log(error);

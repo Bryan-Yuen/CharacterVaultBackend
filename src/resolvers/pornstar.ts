@@ -10,15 +10,15 @@ import {
   UseMiddleware,
 } from "type-graphql";
 import AppDataSource from "../config/db";
-import NewPornstarInput from "../inputClasses/NewPornstarInput";
+import NewPornstarInput from "../inputTypes/NewPornstarInput";
 //import PornstarTagInput from '../inputClasses/PornstarTagInput';
 import { MyContext } from "../index";
 import { GraphQLError } from "graphql";
-import { EditPornstarInput } from "../inputClasses/EditPornstarInput";
-import DeletePornstarInput from "../inputClasses/DeletePornstarInput";
-import { GetPornstarInput } from "../inputClasses/GetPornstarInput";
+import { EditPornstarInput } from "../inputTypes/EditPornstarInput";
+import DeletePornstarInput from "../inputTypes/DeletePornstarInput";
+import { GetPornstarInput } from "../inputTypes/GetPornstarInput";
 import { PornstarLink } from "../entities/PornstarLink";
-import PornstarLinkInput from "../inputClasses/PornstarLinkInput";
+import PornstarLinkInput from "../inputTypes/PornstarLinkInput";
 import { PornstarWithTagsAndLinks } from "../returnTypes/PornstarWithTagsAndLinks";
 import { PornstarWithTags } from "../returnTypes/PornstarWithTags";
 import { AddPornstarReturn } from "../returnTypes/AddPornstarReturn";

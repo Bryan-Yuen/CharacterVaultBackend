@@ -8,7 +8,7 @@ if (!process.env.MAILGUN_API_KEY) {
 }
 const mg = mailgun.client({username: 'api', key: process.env.MAILGUN_API_KEY});
 
-export const sendForgotPasswordEmail = async (username : string, changePasswordUrl : string) => {
+export const sendChangeEmailAddressEmail = async (username : string, changeEmailUrl : string) => {
   const htmlContent = `
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 500px; margin: 0 auto; display:block; font-family: Arial, sans-serif;">
         <tr>
@@ -22,7 +22,7 @@ export const sendForgotPasswordEmail = async (username : string, changePasswordU
                     </tr>
                     <tr>
                         <td align="center">
-                            <h1 style="margin:16px 0; font-size:32px;">Reset your password</h1>
+                            <h1 style="margin:16px 0; font-size:32px;">Change email address</h1>
                         </td>
                     </tr>
                      <tr>
@@ -32,11 +32,11 @@ export const sendForgotPasswordEmail = async (username : string, changePasswordU
                     </tr>
                     <tr>
                         <td>
-                            <p style="margin:16px 0;">We've received a request to reset your password. Click on the button below to proceed:</p>
+                            <p style="margin:16px 0;">We've received a request to change your email address to this email. Click on the button below to confirm:</p>
                         </td>
                     </tr>
                     <tr>
-                        <td align="center"> <a href="${changePasswordUrl}" style="
+                        <td align="center"> <a href="${changeEmailUrl}" style="
               display: inline-block;
               padding: 10px 20px;
               background-color: rgb(24, 119, 201);
@@ -44,7 +44,7 @@ export const sendForgotPasswordEmail = async (username : string, changePasswordU
               text-decoration: none;
               font-size: 18px;
               border-radius: 5px;
-            ">Reset your password</a></td>
+            ">Confirm new email</a></td>
         </tr>
         <tr>
             <td>
@@ -61,8 +61,8 @@ export const sendForgotPasswordEmail = async (username : string, changePasswordU
   mg.messages.create('myfapsheet.com', {
   	from: "MyFapSheet <noreply@myfapsheet.com>",
   	to: ["bryanyuen@myfapsheet.com"],
-  	subject: "Reset password request",
-  	text: "Hi " + username + ", we've received a request to reset your password. To process with changing your password, please click this link:" + changePasswordUrl,
+  	subject: "Change email address request",
+  	text: "Hi " + username + ", we've received a request to change your email address. To proceed with changing your email address, please click this link:" + changeEmailUrl,
   	html: htmlContent
   })
   .then(msg => console.log(msg)) // logs response data
