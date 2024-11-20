@@ -30,6 +30,7 @@
     "@aws-sdk/s3-request-presigner": "^3.363.0",
     "@types/bcrypt": "^5.0.0",
     "@types/uuid": "^9.0.2",
+    "@types/winston-loggly-bulk": "^3.0.6",
     "authorizenet": "^1.0.8",
     "aws-sdk": "^2.1409.0",
     "axios": "^1.6.7",
@@ -52,6 +53,8 @@
     "request": "^2.88.2",
     "type-graphql": "^2.0.0-beta.1",
     "typeorm": "^0.3.11",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "winston": "^3.16.0",
+    "winston-loggly-bulk": "^3.3.2"
   }
 }

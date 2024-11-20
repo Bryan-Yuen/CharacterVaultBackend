@@ -1,7 +1,13 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from "typeorm"
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  JoinColumn,
+} from "typeorm";
 import { ObjectType, Field } from "type-graphql";
-import { Pornstar } from "./Pornstar";
-import { UserTag } from "./UserTag";
+import Pornstar from "./Pornstar";
+import UserTag from "./UserTag";
 /*
 If you don't specify a table name using the @Entity() 
 decorator or other configuration options, TypeORM will 
@@ -11,22 +17,22 @@ class name by converting it to snake_case (e.g., MyEntity
   */
 @ObjectType()
 @Entity()
-export class PornstarTag {
-    @Field()
-    @PrimaryGeneratedColumn()
-    tag_id: number;
+export default class PornstarTag {
+  @Field()
+  @PrimaryGeneratedColumn()
+  tag_id: number;
 
-    @Field()
-    @Column({length: 50})
-    tag_text: string;
+  @Field()
+  @Column({ length: 50 })
+  tag_text: string;
 
-    @Field(() => Pornstar)
-    @ManyToOne(() => Pornstar, pornstar => pornstar.pornstar_tags)
-    @JoinColumn({ name: 'pornstar_id' })
-    pornstar: Pornstar;
+  @Field(() => Pornstar)
+  @ManyToOne(() => Pornstar, (pornstar) => pornstar.pornstar_tags)
+  @JoinColumn({ name: "pornstar_id" })
+  pornstar: Pornstar;
 
-    @Field(() => UserTag)
-    @ManyToOne(() => UserTag, user_tag => user_tag.pornstar_tags)
-    @JoinColumn({ name: 'user_tag_id' })
-    user_tag: UserTag;
+  @Field(() => UserTag)
+  @ManyToOne(() => UserTag, (user_tag) => user_tag.pornstar_tags)
+  @JoinColumn({ name: "user_tag_id" })
+  user_tag: UserTag;
 }

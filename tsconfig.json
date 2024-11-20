@@ -26,6 +26,9 @@
       "*": [ "src/@types/*"]
   }
   },
+  "ts-node": {
+    "files": true
+  },
   "exclude": ["node_modules"],
-  "include": ["./src/**/*.tsx", "./src/**/*.ts"]
+  "include": ["./src/**/*.tsx", "./src/**/*.ts", "./src/types/environment.d.ts","environment.d.ts"]
 }

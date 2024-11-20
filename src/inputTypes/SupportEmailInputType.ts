@@ -1,17 +1,23 @@
 import { InputType, Field } from "type-graphql";
-import { Length} from "class-validator";
+import { MinLength, MaxLength} from "class-validator";
 
 @InputType({ description: "contact email input" })
 export default class SupportEmailInputType {
   @Field()
-  @Length(1, 100, {
-    message: "Subject is blank or more than 100 characters",
+  @MinLength(1, {
+    message: "Subject cannot be blank",
+  })
+  @MaxLength(100, {
+    message: "Subject cannot be more than 100 characters",
   })
   form_subject: string;
 
   @Field()
-  @Length(1, 1000, {
-    message: "Message is blank or more than 1000 characters",
+  @MinLength(1, {
+    message: "Message cannot be blank",
+  })
+  @MaxLength(1000, {
+    message: "Message cannot be more than 1000 characters",
   })
   form_message: string;
 }

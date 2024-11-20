@@ -1,7 +1,14 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, OneToMany} from "typeorm"
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+} from "typeorm";
 import { ObjectType, Field } from "type-graphql";
-import { UserAccount } from "./UserAccount";
-import { PornstarTag } from "./PornstarTag";
+import UserAccount from "./UserAccount";
+import PornstarTag from "./PornstarTag";
 
 /*
 If you don't specify a table name using the @Entity() 
@@ -12,20 +19,22 @@ class name by converting it to snake_case (e.g., MyEntity
   */
 @ObjectType()
 @Entity()
-export class UserTag {
-    @Field()
-    @PrimaryGeneratedColumn()
-    user_tag_id: number;
+export default class UserTag {
+  @Field()
+  @PrimaryGeneratedColumn()
+  user_tag_id: number;
 
-    @Field()
-    @Column({length: 50})
-    user_tag_text: string;
+  @Field()
+  @Column({ length: 50 })
+  user_tag_text: string;
 
-    @Field(() => UserAccount)
-    @ManyToOne(() => UserAccount, user => user.userTags)
-    @JoinColumn({ name: 'user_id' })
-    user: UserAccount;
+  @Field(() => UserAccount)
+  @ManyToOne(() => UserAccount, (user) => user.userTags)
+  @JoinColumn({ name: "user_id" })
+  user: UserAccount;
 
-    @OneToMany(() => PornstarTag, (PornstarTag) => PornstarTag.user_tag, { cascade: true })
-    pornstar_tags: PornstarTag[];
+  @OneToMany(() => PornstarTag, (PornstarTag) => PornstarTag.user_tag, {
+    cascade: true,
+  })
+  pornstar_tags: PornstarTag[];
 }

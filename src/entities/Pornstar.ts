@@ -1,8 +1,8 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, OneToMany } from "typeorm"
 import { ObjectType, Field } from "type-graphql";
-import { UserAccount } from "./UserAccount";
-import { PornstarTag } from "./PornstarTag";
-import { PornstarLink } from "./PornstarLink";
+import UserAccount  from "./UserAccount";
+import PornstarTag from "./PornstarTag";
+import PornstarLink from "./PornstarLink";
 
 /*
 If you don't specify a table name using the @Entity() 
@@ -13,7 +13,7 @@ class name by converting it to snake_case (e.g., MyEntity
   */
 @ObjectType()
 @Entity()
-export class Pornstar {
+export default class Pornstar {
     @Field()
     @PrimaryGeneratedColumn()
     pornstar_id: number;

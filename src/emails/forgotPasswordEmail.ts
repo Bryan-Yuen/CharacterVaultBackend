@@ -8,7 +8,7 @@ if (!process.env.MAILGUN_API_KEY) {
 }
 const mg = mailgun.client({username: 'api', key: process.env.MAILGUN_API_KEY});
 
-export const sendForgotPasswordEmail = async (username : string, changePasswordUrl : string) => {
+const sendForgotPasswordEmail = async (username : string, changePasswordUrl : string) => {
   const htmlContent = `
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 500px; margin: 0 auto; display:block; font-family: Arial, sans-serif;">
         <tr>
@@ -68,3 +68,5 @@ export const sendForgotPasswordEmail = async (username : string, changePasswordU
   .then(msg => console.log(msg)) // logs response data
   .catch(err => console.log(err)); // logs any error
 }
+
+export default sendForgotPasswordEmail;

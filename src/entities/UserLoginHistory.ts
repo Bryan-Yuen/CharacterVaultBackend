@@ -1,6 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, OneToOne, JoinColumn} from "typeorm"
 import { ObjectType, Field } from "type-graphql";
-import { UserAccount } from "./UserAccount";
+import UserAccount from "./UserAccount";
 
 
 /*
@@ -12,7 +12,7 @@ class name by converting it to snake_case (e.g., MyEntity
   */
 @ObjectType()
 @Entity()
-export class UserLoginHistory {
+export default class UserLoginHistory {
     @Field()
     @PrimaryGeneratedColumn()
     user_login_history_id: number;

@@ -8,7 +8,7 @@ if (!process.env.MAILGUN_API_KEY) {
 }
 const mg = mailgun.client({username: 'api', key: process.env.MAILGUN_API_KEY});
 
-export const sendWelcomeEmail = async (username : string, email : string) => {
+const sendWelcomeEmail = async (username : string, email : string) => {
   const htmlContent = `
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 500px; margin: 0 auto; display:block; font-family: Arial, sans-serif;">
         <tr>
@@ -62,3 +62,5 @@ export const sendWelcomeEmail = async (username : string, email : string) => {
   })
   console.log(email)
 }
+
+export default sendWelcomeEmail;

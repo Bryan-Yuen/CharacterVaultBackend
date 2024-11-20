@@ -17,6 +17,13 @@ import express, { Request, Response } from "express";
 import http from "http";
 import "dotenv/config";
 
+if (process.env.PRODUCTION && !process.env.PRODUCTION_URL) {
+  throw new Error("production url not defined");
+}
+if (!process.env.PRODUCTION && !process.env.DEVELOPMENT_URL) {
+  throw new Error("development url not defined");
+}
+
 export type MyContext = {
   req: Request & { session?: Session & { userId?: number } };
   res: Response;
@@ -36,8 +43,8 @@ const startServer = async () => {
 
   app.use(
     cors({
-      origin: process.env.PRODUCTION ? ["https://myfapsheettestingwebsite.us"] : ["http://localhost:3000", "http://192.168.0.208:3000"],
-      //origin: ['http://localhost:3000',],
+      // stupid typescript compile error forced me to use || "" even though i have typecheck up there and types in environment types file
+      origin: process.env.PRODUCTION ? [process.env.PRODUCTION_URL || ""] : ["http://localhost:3000", process.env.DEVELOPMENT_URL || ""],
       credentials: true,
     })
   );

@@ -1,6 +1,9 @@
-import { UserAccount } from "../entities/UserAccount";
-import { UserTag } from "../entities/UserTag";
-import { PornstarTag } from "../entities/PornstarTag";
+// entities
+import UserAccount from "../entities/UserAccount";
+import UserTag from "../entities/UserTag";
+import PornstarTag from "../entities/PornstarTag";
+import { MyContext } from "../index";
+// dependencies
 import {
   Resolver,
   Mutation,
@@ -9,249 +12,310 @@ import {
   Query,
   UseMiddleware,
 } from "type-graphql";
-import AppDataSource from "../config/db";
-import { MyContext } from "../index";
 import { GraphQLError } from "graphql";
+// config
+import AppDataSource from "../config/db";
+// input types
 import AddUserTagInputType from "../inputTypes/AddUserTagInputType";
 import DeleteUserTagInputType from "../inputTypes/DeleteUserTaginputType";
 import EditUserTagInputType from "../inputTypes/EditUserTagInputType";
-import { isAuth } from "../middleware/isAuth";
-import { rateLimit } from "../middleware/rateLimit";
+// middleware
+import isAuth from "../middleware/isAuth";
+import rateLimit from "../middleware/rateLimit";
+// errors
+import entityNullError from "../errors/entityNullError";
+import findEntityError from "../errors/findEntityError";
+import saveEntityError from "../errors/saveEntityError";
+import unauthorizedEntityError from "../errors/unauthorizedEntityError";
+import transactionFailedError from "../errors/transactionFailedError";
 
 @Resolver(UserTag)
 export class UserTagResolver {
+  // adds new user tag for account
+  // if we implement caching we need to return the id too.
   @Mutation(() => Boolean)
   @UseMiddleware(isAuth)
-  @UseMiddleware(rateLimit(50, 60 * 5))
+  @UseMiddleware(rateLimit(50, 60 * 5)) // max 50 requests per 5 minutes
   async addUserTag(
     @Arg("newUserTag") { user_tag_text }: AddUserTagInputType,
     @Ctx() { req }: MyContext
   ): Promise<Boolean> {
-    const userRepository = AppDataSource.getRepository(UserAccount);
-    let user: UserAccount | null = null;
     try {
-      user = await userRepository.findOne({
+      const userRepository = AppDataSource.getRepository(UserAccount);
+      const user = await userRepository.findOne({
         where: {
           user_id: req.session.userId,
-          //user_id: 58,
         },
-        //user_id: req.session.userId,
         relations: ["userTags"],
       });
+      if (!user)
+        entityNullError(
+          "addUserTag",
+          "user",
+          req.session.userId,
+          req.session.userId
+        );
+      if (!user.userTags)
+        entityNullError(
+          "addUserTag",
+          "userTags",
+          req.session.userId,
+          req.session.userId
+        );
+
+      const userTagExists = user.userTags.some(
+        (tag) => tag.user_tag_text === user_tag_text
+      );
+
+      // expected error for tag already in account
+      if (userTagExists) {
+        throw new GraphQLError("Tag already exists for this user.", {
+          extensions: {
+            code: "TAG_ALREADY_EXISTS",
+          },
+        });
+      }
+
+      const userTag = new UserTag();
+
+      userTag.user_tag_text = user_tag_text;
+      userTag.user = user;
+
+      const userTagRepository = AppDataSource.getRepository(UserTag);
+
+      try {
+        await userTagRepository.save(userTag);
+      } catch (error) {
+        saveEntityError(
+          "addUserTag",
+          "userTag",
+          req.session.userId,
+          userTag,
+          error
+        );
+      }
+
+      return true;
     } catch (error) {
-      console.error("Error fetching user", error);
-      throw new GraphQLError("Internal server error.", {
-        extensions: { code: "INTERNAL_SERVER_ERROR" },
-      });
+      findEntityError(
+        "addUserTag",
+        "user",
+        req.session.userId,
+        req.session.userId,
+        error
+      );
     }
-    if (!user) {
-      throw new GraphQLError("User not found.", {
-        extensions: {
-          code: "USER_NOT_FOUND",
-        },
-      });
-    }
-
-    const userTagExists = user.userTags.some(
-      (tag) => tag.user_tag_text === user_tag_text
-    );
-
-    if (userTagExists) {
-      throw new GraphQLError("Tag already exists for this user.", {
-        extensions: {
-          code: "TAG_ALREADY_EXISTS",
-        },
-      });
-    }
-    console.log("userTags", user.userTags);
-
-    const userTag = new UserTag();
-
-    userTag.user_tag_text = user_tag_text;
-    userTag.user = user;
-
-    const userTagRepository = AppDataSource.getRepository(UserTag);
-
-    try {
-      await userTagRepository.save(userTag);
-    } catch (error) {
-      console.error("Error saving userTag", error);
-      throw new GraphQLError("Internal server error.", {
-        extensions: { code: "INTERNAL_SERVER_ERROR" },
-      });
-    }
-
-    // return usertag if you want to use cache
-    return true;
   }
 
+  // edits user tag for account, will also change for all pornstars tags using this user tag
   @Mutation(() => Boolean)
   @UseMiddleware(isAuth)
-  @UseMiddleware(rateLimit(50, 60 * 5))
+  @UseMiddleware(rateLimit(50, 60 * 5)) // max 50 requests per 5 minutes
   async editUserTag(
     @Arg("editUserTagInput")
     { user_tag_id, user_tag_text }: EditUserTagInputType,
     @Ctx() { req }: MyContext
   ): Promise<Boolean> {
-    const userTagRepository = AppDataSource.getRepository(UserTag);
-    let userTag: UserTag | null = null;
     try {
-      userTag = await userTagRepository.findOne({
+      const userTagRepository = AppDataSource.getRepository(UserTag);
+      const userTag = await userTagRepository.findOne({
         where: { user_tag_id: user_tag_id },
         relations: ["user", "user.userTags"],
       });
+      // expected error if user deleted something and had another web page opened, but should be rare
+      if (!userTag) {
+        entityNullError(
+          "editUserTag",
+          "userTag",
+          req.session.userId,
+          user_tag_id
+        );
+      }
+      if (!userTag.user) {
+        entityNullError(
+          "editUserTag",
+          "user",
+          req.session.userId,
+          req.session.userId
+        );
+      }
+      if (!userTag.user.userTags) {
+        entityNullError(
+          "editUserTag",
+          "userTags",
+          req.session.userId,
+          req.session.userId
+        );
+      }
+      if (userTag.user.user_id !== req.session.userId) {
+        unauthorizedEntityError(
+          "editUserTag",
+          "userTag",
+          req.session.userId,
+          userTag.user.user_id,
+          user_tag_id
+        );
+      }
+      const userTagExists = userTag.user.userTags.some(
+        (tag) => tag.user_tag_text === user_tag_text
+      );
+
+      // expected error for tag already in account
+      if (userTagExists) {
+        throw new GraphQLError("Tag already exists for this user.", {
+          extensions: {
+            code: "TAG_ALREADY_EXISTS",
+          },
+        });
+      }
+
+      userTag.user_tag_text = user_tag_text;
+
+      try {
+        await AppDataSource.transaction(async (transactionManager) => {
+          await Promise.all([
+            transactionManager.save(userTag),
+            transactionManager
+              .createQueryBuilder()
+              .update(PornstarTag)
+              .set({
+                tag_text: user_tag_text,
+              })
+              .where("user_tag_id = :user_tag_id", {
+                user_tag_id: user_tag_id,
+              })
+              .execute(),
+          ]);
+        });
+      } catch (error) {
+        // Handle errors and roll back if needed
+        transactionFailedError(
+          "editUserTag",
+          "userTag",
+          req.session.userId,
+          user_tag_id,
+          error
+        );
+      }
+
+      return true;
     } catch (error) {
-      console.error("Error fetching user tag:", error);
-      throw new GraphQLError("Internal server error.", {
-        extensions: { code: "INTERNAL_SERVER_ERROR" },
-      });
-    }
-    console.log("what is usertag", userTag);
-    if (!userTag) {
-      throw new GraphQLError("UserTag is not found.", {
-        extensions: {
-          code: "USERTag_NOT_FOUND",
-        },
-      });
-    }
-    if (userTag.user.user_id !== req.session.userId) {
-      throw new GraphQLError("Unauthorized user tag's user id.", {
-        extensions: {
-          code: "UNAUTHORIZED_USERTAG_ACCESS",
-        },
-      });
-    }
-    const userTagExists = userTag.user.userTags.some(
-      (tag) => tag.user_tag_text === user_tag_text
-    );
-
-    if (userTagExists) {
-      throw new GraphQLError("Tag already exists for this user.", {
-        extensions: {
-          code: "TAG_ALREADY_EXISTS",
-        },
-      });
-    }
-
-    console.log("work?", userTag.user.userTags);
-
-    userTag.user_tag_text = user_tag_text;
-    // maybe do this in transaction
-    try {
-      return await AppDataSource.transaction(async (transactionManager) => {
-        await Promise.all([
-          transactionManager.save(userTag),
-          transactionManager
-            .createQueryBuilder()
-            .update(PornstarTag)
-            .set({
-              tag_text: user_tag_text,
-            })
-            .where("user_tag_id = :user_tag_id", {
-              user_tag_id: user_tag_id,
-            })
-            .execute(),
-        ]);
-
-        return true;
-      });
-    } catch (error) {
-      // Handle errors and roll back if needed
-      console.error("Transaction failed:", error);
-      throw new GraphQLError("Failed to edit usertag.", {
-        extensions: { code: "INTERNAL_SERVER_ERROR" },
-      });
+      findEntityError(
+        "editUserTag",
+        "userTag",
+        req.session.userId,
+        user_tag_id,
+        error
+      );
     }
   }
 
+  // deletes user tag for account, will also delete in all pornstar tags using this tag
   @Mutation(() => Boolean)
   @UseMiddleware(isAuth)
-  @UseMiddleware(rateLimit(50, 60 * 5))
+  @UseMiddleware(rateLimit(50, 60 * 5)) // max 50 requests per 5 minutes
   async deleteUserTag(
     @Arg("userTagId") { user_tag_id }: DeleteUserTagInputType,
     @Ctx() { req }: MyContext
   ): Promise<Boolean> {
-    // saw ben awad's just check if its has that && req.session.userId
-    const userTagRepository = AppDataSource.getRepository(UserTag);
-    let userTag: UserTag | null = null;
     try {
-      userTag = await userTagRepository.findOne({
+      const userTagRepository = AppDataSource.getRepository(UserTag);
+      const userTag = await userTagRepository.findOne({
         where: { user_tag_id: user_tag_id },
         relations: ["user"],
       });
+
+      // expected error if user deleted something and had another web page opened, but should be rare
+      if (!userTag) {
+        entityNullError(
+          "deleteUserTag",
+          "userTag",
+          req.session.userId,
+          user_tag_id
+        );
+      }
+      if (userTag.user.user_id !== req.session.userId) {
+        unauthorizedEntityError(
+          "deleteUserTag",
+          "userTag",
+          req.session.userId,
+          userTag.user.user_id,
+          user_tag_id
+        );
+      }
+
+      try {
+        await AppDataSource.transaction(async (transactionManager) => {
+          await transactionManager
+            .createQueryBuilder()
+            .delete()
+            .from(PornstarTag)
+            .where("user_tag_id = :user_tag_id", { user_tag_id: user_tag_id })
+            .execute();
+
+          await transactionManager.remove(userTag);
+        });
+      } catch (error) {
+        // Handle errors and roll back if needed
+        transactionFailedError(
+          "deleteUserTag",
+          "userTag",
+          req.session.userId,
+          user_tag_id,
+          error
+        );
+      }
+
+      return true;
     } catch (error) {
-      console.error("Error fetching user tag:", error);
-      throw new GraphQLError("Internal server error.", {
-        extensions: { code: "INTERNAL_SERVER_ERROR" },
-      });
-    }
-
-    if (!userTag) {
-      throw new GraphQLError("UserTag is not found.", {
-        extensions: {
-          code: "USERTag_NOT_FOUND",
-        },
-      });
-    }
-    if (userTag.user.user_id !== req.session.userId) {
-      throw new GraphQLError("Unauthorized user tag's user id.", {
-        extensions: {
-          code: "UNAUTHORIZED_USERTAG_ACCESS",
-        },
-      });
-    }
-
-    try {
-      return await AppDataSource.transaction(async (transactionManager) => {
-        await transactionManager
-          .createQueryBuilder()
-          .delete()
-          .from(PornstarTag)
-          .where("user_tag_id = :user_tag_id", { user_tag_id: user_tag_id })
-          .execute();
-
-        await transactionManager.remove(userTag);
-
-        return true;
-      });
-    } catch (error) {
-      // Handle errors and roll back if needed
-      console.error("Transaction failed:", error);
-      throw new GraphQLError("Failed to delete usertag.", {
-        extensions: { code: "INTERNAL_SERVER_ERROR" },
-      });
+      findEntityError(
+        "deleteUserTag",
+        "user",
+        req.session.userId,
+        user_tag_id,
+        error
+      );
     }
   }
 
+  // returns all usertags for an account
   @Query(() => [UserTag])
   @UseMiddleware(isAuth)
-  @UseMiddleware(rateLimit(50, 60 * 5))
+  @UseMiddleware(rateLimit(50, 60 * 5)) // max 50 requests per 5 minutes
   async getUserTags(@Ctx() { req }: MyContext): Promise<UserTag[]> {
-    const userRepository = AppDataSource.getRepository(UserAccount);
-
-    let user: UserAccount | null = null;
     try {
-      user = await userRepository.findOne({
+      const userRepository = AppDataSource.getRepository(UserAccount);
+
+      const user = await userRepository.findOne({
         where: {
           user_id: req.session.userId,
-          //user_id: 58,
         },
-        //user_id: req.session.userId,
         relations: ["userTags"],
       });
+      if (!user)
+        entityNullError(
+          "getUserTags",
+          "user",
+          req.session.userId,
+          req.session.userId
+        );
+      if (!user.userTags)
+        entityNullError(
+          "getUserTags",
+          "userTags",
+          req.session.userId,
+          req.session.userId
+        );
+
+      return user.userTags;
     } catch (error) {
-      console.error("Error fetching user", error);
-      throw new GraphQLError("Internal server error.", {
-        extensions: { code: "INTERNAL_SERVER_ERROR" },
-      });
+      findEntityError(
+        "getUserTags",
+        "user",
+        req.session.userId,
+        req.session.userId,
+        error
+      );
     }
-    if (!user) {
-      throw new GraphQLError("User not found.", {
-        extensions: {
-          code: "USER_NOT_FOUND",
-        },
-      });
-    }
-    return user.userTags;
   }
 }

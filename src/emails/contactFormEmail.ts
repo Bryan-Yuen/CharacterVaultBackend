@@ -9,7 +9,7 @@ if (!process.env.MAILGUN_API_KEY) {
 const mg = mailgun.client({username: 'api', key: process.env.MAILGUN_API_KEY});
 
 // try catch will be done on the resolver side
-export const sendHomePageContactEmail = async (email : string, message : string) => {
+const sendHomePageContactEmail = async (email : string, message : string) => {
   await mg.messages.create('myfapsheet.com', {
   	from: email,
   	to: ["support@myfapsheet.com"],
@@ -18,3 +18,5 @@ export const sendHomePageContactEmail = async (email : string, message : string)
   	html: message
   })
 }
+
+export default sendHomePageContactEmail;

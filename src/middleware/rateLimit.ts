@@ -3,7 +3,7 @@ import { MyContext } from "../index";
 
 //const ONE_DAY = 60 * 60 * 24
 
-export const rateLimit: (limit?: number, seconds?: number) => MiddlewareFn<MyContext> = (limit = 100, seconds = 60 * 60 * 24) => async ({ context: { req, redis }, info }, next) => {
+const rateLimit: (limit?: number, seconds?: number) => MiddlewareFn<MyContext> = (limit = 100, seconds = 60 * 60 * 24) => async ({ context: { req, redis }, info }, next) => {
   const key = `rate-limit:${info.fieldName}:${req.ip}`;
 
   // Lua script to increment the counter and set the expiration atomically
@@ -26,7 +26,7 @@ export const rateLimit: (limit?: number, seconds?: number) => MiddlewareFn<MyCon
 
     // Check if the limit has been exceeded
     if (current > limit + 1) {
-      throw new Error("Too much");
+      throw new Error("Maximum number of requests reached");
     }
 
     return next();
@@ -53,3 +53,5 @@ export const rateLimit: (limit? : number) => MiddlewareFn<MyContext> = (limit = 
   return next();
 };
 */
+
+export default rateLimit

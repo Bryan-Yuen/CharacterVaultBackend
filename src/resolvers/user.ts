@@ -1,4 +1,8 @@
-import { UserAccount } from "../entities/UserAccount";
+// entities
+import UserAccount from "../entities/UserAccount";
+import UserLoginHistory from "../entities/UserLoginHistory";
+import { MyContext } from "../index";
+// dependencies
 import {
   Resolver,
   Mutation,
@@ -7,50 +11,118 @@ import {
   Query,
   UseMiddleware,
 } from "type-graphql";
-import AppDataSource from "../config/db";
 import bcrypt from "bcrypt";
 import { GraphQLError } from "graphql";
-import RegisterUserInput from "../inputTypes/RegisterUserInput";
-import LoginUserInput from "../inputTypes/LoginUserInput";
-import { UserProfileReturn } from "../returnTypes/UserProfileReturn";
-import { UserLoginHistory } from "../entities/UserLoginHistory";
-import { SuccessResponse } from "../returnTypes/SuccessResponse";
-import { MyContext } from "../index";
 import { v4 as uuidv4 } from "uuid";
-import { isAuth } from "../middleware/isAuth";
-import { rateLimit } from "../middleware/rateLimit";
-import { sendForgotPasswordEmail } from "../emails/forgotPasswordEmail";
-import { sendWelcomeEmail } from "../emails/welcomeEmail";
-import { sendChangeEmailAddressEmail } from "../emails/changeEmailAddressEmail";
+// config
+import AppDataSource from "../config/db";
+import logger from "../config/logger";
+// input types
+import RegisterUserInputType from "../inputTypes/RegisterUserInputType";
+import LoginUserInputType from "../inputTypes/LoginUserInputType";
+import ForgotPasswordInputType from "../inputTypes/ForgotPasswordInputType";
+import ChangePasswordInputType from "../inputTypes/ChangePasswordInputType";
+import ChangePasswordLoggedInInputType from "../inputTypes/ChangePasswordLoggedInInputType";
+import ChangeEmailInputType from "../inputTypes/ChangeEmailInputType";
+import ConfirmChangeEmailInputType from "../inputTypes/ConfirmChangeEmailInputType";
+// return types
+import UserProfileReturn from "../returnTypes/UserProfileReturn";
+// middleware
+import isAuth from "../middleware/isAuth";
+import rateLimit from "../middleware/rateLimit";
+// emails
+import sendForgotPasswordEmail from "../emails/forgotPasswordEmail";
+import sendWelcomeEmail from "../emails/welcomeEmail";
+import sendChangeEmailAddressEmail from "../emails/changeEmailAddressEmail";
+// errors
+import entityNullError from "../errors/entityNullError";
+import findEntityError from "../errors/findEntityError";
+import saveEntityError from "../errors/saveEntityError";
+import sendEmailError from "../errors/sendEmailError";
+import redisError from "../errors/redisError";
 
 @Resolver(UserAccount)
 export class UserResolver {
-  // might need a rate limit here just in case someone use bot to spam refresh althought this is a cheap operation
+  // checks if user is logged in when they land on an authentication page for the first time or refresh on an authentication page.
+  // also updates their login history with the current time.
   @Query(() => Boolean)
+  // rate limit here just in case someone use bot to spam refresh.
+  @UseMiddleware(rateLimit(50, 60 * 5)) // max 50 requests per 5 minutes
   async checkIfLoggedin(@Ctx() { req }: MyContext): Promise<Boolean> {
-    console.log("im in checkifloggedin", req.session.userId);
-    if (req.session.userId) return true;
-    else return false;
+    try {
+      console.log("im in checkifloggedin", req.session.userId);
+      if (req.session.userId) {
+        const userRepository = AppDataSource.getRepository(UserAccount);
+        const user = await userRepository.findOne({
+          where: {
+            user_id: req.session.userId,
+          },
+          relations: ["userLoginHistory"],
+        });
+        if (user === null) {
+          entityNullError(
+            "checkIfLoggedin",
+            "user",
+            req.session.userId,
+            req.session.userId
+          );
+        }
+        if (user.userLoginHistory === null) {
+          entityNullError(
+            "checkIfLoggedin",
+            "userLoginHistory",
+            req.session.userId,
+            req.session.userId
+          );
+        }
+        const userLoginHistoryRepository =
+          AppDataSource.getRepository(UserLoginHistory);
+        user.userLoginHistory.user_last_login_date_time = new Date();
+        try {
+          await userLoginHistoryRepository.save(user.userLoginHistory);
+        } catch (error) {
+          saveEntityError(
+            "checkIfLoggedin",
+            "userLoginHistory",
+            req.session.userId,
+            user.userLoginHistory,
+            error
+          );
+        }
+
+        return true;
+      } else return false;
+    } catch (error) {
+      findEntityError(
+        "checkIfLoggedin",
+        "user",
+        req.session.userId,
+        req.session.userId,
+        error
+      );
+    }
   }
 
-  @Mutation(() => SuccessResponse)
-  @UseMiddleware(rateLimit(10, 60 * 60 * 24))
+  // registers new user
+  @Mutation(() => Boolean)
+  @UseMiddleware(rateLimit(10, 60 * 60 * 24)) // max 10 requests per day per ip
   async registerUser(
-    @Arg("registerUserData") registerUserData: RegisterUserInput,
+    @Arg("registerUserData") {user_username, user_email, user_password}: RegisterUserInputType,
     @Ctx() { req }: MyContext
-  ): Promise<SuccessResponse> {
-    const userRepository = AppDataSource.getRepository(UserAccount);
-    const userLoginHistoryRepository =
-      AppDataSource.getRepository(UserLoginHistory);
-
+  ): Promise<Boolean> {
     try {
+      const userRepository = AppDataSource.getRepository(UserAccount);
+      const userLoginHistoryRepository =
+        AppDataSource.getRepository(UserLoginHistory);
+
       const [userEmailExists, userUsernameExists] = await Promise.all([
-        userRepository.findOneBy({ user_email: registerUserData.user_email }),
+        userRepository.findOneBy({ user_email: user_email }),
         userRepository.findOneBy({
-          user_username: registerUserData.user_username,
+          user_username: user_username,
         }),
       ]);
 
+      // expected error for email already exists
       if (userEmailExists) {
         throw new GraphQLError(
           "Registration failed. Email is already in use.",
@@ -60,66 +132,100 @@ export class UserResolver {
         );
       }
 
+      // expected error for username already exists
       if (userUsernameExists) {
         throw new GraphQLError("Registration failed. Username already taken", {
           extensions: { code: "USERNAME_TAKEN" },
         });
       }
 
+      // hash password
       const hashedPassword = await bcrypt.hash(
-        registerUserData.user_password,
+        user_password,
         10
       );
       const user = new UserAccount();
-      user.user_username = registerUserData.user_username;
-      user.user_email = registerUserData.user_email;
+      user.user_username = user_username;
+      user.user_email = user_email;
       user.user_password = hashedPassword;
 
-      const saveUser = await AppDataSource.manager.save(user);
+      try {
+        const saveUser = await AppDataSource.manager.save(user);
 
-      req.session.userId = saveUser.user_id;
+        req.session.userId = saveUser.user_id;
 
-      const userLoginHistory = new UserLoginHistory();
-      userLoginHistory.user_created_date_time = new Date();
-      userLoginHistory.user_last_login_date_time = new Date();
-      userLoginHistory.user = saveUser;
+        const userLoginHistory = new UserLoginHistory();
+        userLoginHistory.user_created_date_time = new Date();
+        userLoginHistory.user_last_login_date_time = new Date();
+        userLoginHistory.user = saveUser;
 
-      await userLoginHistoryRepository.save(userLoginHistory);
-
-      //return user;
-      await sendWelcomeEmail(
-        registerUserData.user_username,
-        registerUserData.user_email
-      );
-      return {
-        message: "User registration successful!",
-        success: true,
-      };
-    } catch (error) {
-      if (error instanceof GraphQLError) {
-        throw error;
-      } else {
-        console.error("Unexpected error during registration:", error);
-        throw new GraphQLError("Internal server error during registration.", {
-          extensions: { code: "INTERNAL_SERVER_ERROR" },
-        });
+        try {
+          await userLoginHistoryRepository.save(userLoginHistory);
+        } catch (error) {
+          saveEntityError(
+            "registerUser",
+            "userLoginHistory",
+            req.session.userId,
+            userLoginHistory,
+            error
+          );
+        }
+      } catch (error) {
+        saveEntityError(
+          "registerUser",
+          "user",
+          req.session.userId,
+          user,
+          error
+        );
       }
+
+      try {
+        await sendWelcomeEmail(
+          user_username,
+          user_email
+        );
+      } catch (error) {
+        // not going to throw error here because not sending email is not that important. will just log it
+        logger.error(
+          `welcome email failed to send for email: ${user_email}`,
+          {
+            resolver: "registerUser",
+            email_type: "welcome email",
+            user_id: req.session.userId,
+            email: user_email,
+            error,
+          }
+        );
+      }
+
+      return true;
+    } catch (error) {
+      // either one of the find by username or email caused the error
+      findEntityError(
+        "registerUser",
+        "user",
+        req.session.userId,
+        req.session.userId,
+        error
+      );
     }
   }
 
-  //return payload
-  @Mutation(() => SuccessResponse)
-  // rate limit 25 times in 1 hour seems fair
-  @UseMiddleware(rateLimit(25, 60 * 60))
+  // logins current user
+  @Mutation(() => Boolean)
+  @UseMiddleware(rateLimit(20, 60 * 5)) // max 20 login attempts per 5 minutes
   async loginUser(
-    @Arg("loginUserData") loginUserData: LoginUserInput,
+    @Arg("loginUserData") {user_email, user_password}: LoginUserInputType,
     @Ctx() { req }: MyContext
-  ): Promise<SuccessResponse> {
+  ): Promise<Boolean> {
     try {
       const userRepository = AppDataSource.getRepository(UserAccount);
       const user = await userRepository.findOneBy({
-        user_email: loginUserData.user_email,
+        user_email: user_email,
       });
+
+      // expected error, when user tries to log in with unregistered email
       if (user === null) {
         throw new GraphQLError("Email is not registered.", {
           extensions: {
@@ -127,110 +233,123 @@ export class UserResolver {
           },
         });
       }
+
       const match = await bcrypt.compare(
-        loginUserData.user_password,
+        user_password,
         user.user_password
       );
+      // expected error, when user enteres incorrect password
       if (!match) {
-        console.log("im in incorrect");
         throw new GraphQLError("Invalid email and password combination.", {
           extensions: {
             code: "INCORRECT_PASSWORD",
           },
         });
       } else {
-        console.log("checking user_id", user.user_id);
+        // stores id in session cookie
         req.session.userId = user.user_id;
-        return {
-          message: "User login successful!",
-          success: true,
-        };
+        return true;
       }
     } catch (error) {
-      if (error instanceof GraphQLError) {
-        throw error;
-      } else {
-        console.error("Unexpected error during registration:", error);
-        throw new GraphQLError("Internal server error during registration.", {
-          extensions: { code: "INTERNAL_SERVER_ERROR" },
-        });
-      }
+      findEntityError(
+        "loginUser",
+        "user",
+        req.session.userId,
+        req.session.userId,
+        error
+      );
     }
   }
 
-  //return payload
+  // logs user out and clears session cookie
   @Mutation(() => Boolean)
   @UseMiddleware(isAuth)
-  @UseMiddleware(rateLimit(50, 60 * 5))
+  @UseMiddleware(rateLimit(20, 60 * 5)) // max 20 requests per 5 minutes
   async logoutUser(@Ctx() { req, res }: MyContext): Promise<Boolean> {
     return new Promise((resolve) =>
-      req.session.destroy((err) => {
-        res.clearCookie("fap");
-        if (err) {
-          console.log(err);
+      // destroys session data on server side
+      req.session.destroy((error) => {
+        if (error) {
+          logger.error(`Error logging out for user_id: ${req.session.userId}`, {
+            resolver: "logoutUser",
+            user_id: req.session.userId,
+            error,
+          });
           resolve(false);
           return;
         }
-
+        // clears cookie on client side
+        res.clearCookie("fap");
         resolve(true);
       })
     );
   }
 
+  // sends a reset password email with url and token link
   @Mutation(() => Boolean)
-  // this sends an email so only limiting to 10 emails a day
-  //@UseMiddleware(rateLimit(10, 60 * 60 * 24))
+  @UseMiddleware(rateLimit(10, 60 * 60 * 24)) // max 10 emails a day
   async forgotPassword(
-    @Arg("email") email: string,
+    @Arg("forgotPasswordInput") {user_email}: ForgotPasswordInputType,
     @Ctx() { redis }: MyContext
   ): Promise<Boolean> {
     try {
       const userRepository = AppDataSource.getRepository(UserAccount);
-      const userEmail = await userRepository.findOneBy({
-        user_email: email,
+      const user = await userRepository.findOneBy({
+        user_email: user_email,
       });
-      if (userEmail === null) {
+      // expected error if user enters an email that is not registered
+      if (user === null) {
         throw new GraphQLError("Email does not exist.", {
           extensions: {
             code: "EMAIL_NOT_REGISTERED",
           },
         });
       }
-      console.log(userEmail);
+
       const token = uuidv4();
 
-      // expires in 1 hour
-      await redis.set(token, userEmail.user_id, "EX", 1000 * 60 * 60);
+      try {
+        // expires in 1 hour
+        await redis.set(token, user.user_id, "EX", 1000 * 60 * 60);
+        try {
+          const changePasswordUrl = `http://192.168.0.208:3000/change-password?token=${token}`;
+          await sendForgotPasswordEmail(user.user_username, changePasswordUrl);
+        } catch (error) {
+          sendEmailError(
+            "forgotPassword",
+            "reset password email",
+            user_email,
+            error
+          );
+        }
+      } catch (error) {
+        redisError("forgotPassword", "SET", error);
+      }
 
-      const changePasswordUrl = `http://192.168.0.208:3000/change-password?token=${token}`;
-      await sendForgotPasswordEmail(userEmail.user_username, changePasswordUrl);
-      //sendForgotPasswordEmail(changePasswordUrl);
       return true;
     } catch (error) {
-      if (error instanceof GraphQLError) {
-        throw error;
-      } else {
-        console.error("Unexpected error during reset password link:", error);
-        throw new GraphQLError(
-          "Internal server error during reset password link.",
-          {
-            extensions: { code: "INTERNAL_SERVER_ERROR" },
-          }
-        );
-      }
+      logger.error("Error fetching user", {
+        resolver: "forgotPassword",
+        user_email: user_email,
+        error,
+      });
+      throw new GraphQLError("Internal server error.", {
+        extensions: { code: "INTERNAL_SERVER_ERROR" },
+      });
     }
   }
 
+  // resets password using the link from email with token
   @Mutation(() => Boolean)
-  @UseMiddleware(rateLimit(50, 60 * 5))
+  @UseMiddleware(rateLimit(20, 60 * 5)) // max 20 login attempts per 5 minutes
   async changePassword(
-    @Arg("token") token: string,
-    @Arg("newPassword") newPassword: string,
+    @Arg("changePasswordInput") {new_password, token}: ChangePasswordInputType,
     @Ctx() { redis }: MyContext
   ): Promise<Boolean> {
     try {
       const userId = await redis.get(token);
-      if (!userId) {
+      // expected error if user waited too long and clicked on link
+      if (userId === null) {
         throw new GraphQLError("Token Expired.", {
           extensions: {
             code: "TOKEN_EXPIRED",
@@ -241,74 +360,80 @@ export class UserResolver {
       const userIdNum = parseInt(userId);
 
       const userRepository = AppDataSource.getRepository(UserAccount);
-      const user = await userRepository.findOneBy({
-        user_id: userIdNum,
-      });
-
-      //check if user still exists
-      if (!user) {
-        throw new GraphQLError("User no longer exists.", {
-          extensions: {
-            code: "TOKEN_EXPIRED",
-          },
+      try {
+        const user = await userRepository.findOneBy({
+          user_id: userIdNum,
         });
+        if (user === null) {
+          entityNullError("changePassword", "user", userIdNum, userIdNum);
+        }
+
+        const hashedPassword = await bcrypt.hash(new_password, 10);
+        user.user_password = hashedPassword;
+
+        try {
+          // these 2 executions don't depend on one another so will batch them.
+          await Promise.all([userRepository.save(user), redis.del(token)]);
+        } catch (error) {
+          saveEntityError(
+            "changePassword",
+            "user or redis del in promise.all",
+            userIdNum,
+            user,
+            error
+          );
+        }
+      } catch (error) {
+        findEntityError("changePassword", "user", userIdNum, userIdNum, error);
       }
-
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-      user.user_password = hashedPassword;
-
-      // this will be in a seperate resolver and will be updated every time the user hits the dashboard page
-      // this might not be needed just on dashboard page
-      //user.user_last_login_date_time = new Date();
-
-      await userRepository.save(user);
-      await redis.del(token);
 
       return true;
     } catch (error) {
-      if (error instanceof GraphQLError) {
-        throw error;
-      } else {
-        console.error("Unexpected error during change password:", error);
-        throw new GraphQLError(
-          "Internal server error during change password.",
-          {
-            extensions: { code: "INTERNAL_SERVER_ERROR" },
-          }
-        );
-      }
+      redisError("changePassword", "GET", error);
     }
   }
 
+  // gets user's username and email
   @Query(() => UserProfileReturn)
   @UseMiddleware(isAuth)
-  @UseMiddleware(rateLimit(50, 60 * 5))
+  @UseMiddleware(rateLimit(50, 60 * 5)) // max 50 requests per 5 minutes
   async getUserProfile(@Ctx() { req }: MyContext): Promise<UserProfileReturn> {
-    const userRepository = AppDataSource.getRepository(UserAccount);
-    const user = await userRepository.findOneBy({
-      user_id: req.session.userId,
-    });
-    if (user) {
-      return {
-        user_username: user.user_username,
-        user_email: user.user_email,
-      };
-    } else {
-      throw new GraphQLError("User is not found.", {
-        extensions: {
-          code: "USER_NOT_FOUND",
-        },
+    try {
+      const userRepository = AppDataSource.getRepository(UserAccount);
+      const user = await userRepository.findOneBy({
+        user_id: req.session.userId,
       });
+      if (user === null) {
+        entityNullError(
+          "getUserProfile",
+          "user",
+          req.session.userId,
+          req.session.userId
+        );
+      } else {
+        return {
+          user_username: user.user_username,
+          user_email: user.user_email,
+        };
+      }
+    } catch (error) {
+      findEntityError(
+        "getUserProfile",
+        "user",
+        req.session.userId,
+        req.session.userId,
+        error
+      );
     }
   }
 
   // make sure to do some input validation on the input class file
+  // changes user's password when they are already logged in
   @Mutation(() => Boolean)
   @UseMiddleware(isAuth)
-  @UseMiddleware(rateLimit(25, 60 * 60))
+  @UseMiddleware(rateLimit(25, 60 * 60)) // max 25 requests every hour
   async changePasswordLoggedIn(
-    @Arg("currentPassword") currentPassword: string,
-    @Arg("newPassword") newPassword: string,
+    @Arg("changePasswordLoggedInInput") {current_password, new_password} : ChangePasswordLoggedInInputType,
     @Ctx() { req }: MyContext
   ): Promise<Boolean> {
     try {
@@ -316,111 +441,126 @@ export class UserResolver {
       const user = await userRepository.findOneBy({
         user_id: req.session.userId,
       });
-      //check if user still exists
-      if (!user) {
-        throw new GraphQLError("User no longer exists.", {
-          extensions: {
-            code: "TOKEN_EXPIRED",
-          },
-        });
+      if (user === null) {
+        entityNullError(
+          "changePasswordLoggedIn",
+          "user",
+          req.session.userId,
+          req.session.userId
+        );
       }
-      const match = await bcrypt.compare(currentPassword, user.user_password);
-      console.log(match);
+      const match = await bcrypt.compare(current_password, user.user_password);
+      // expected error if user enters wrong current password
       if (!match) {
-        throw new GraphQLError("Invalid email and username combination.", {
+        throw new GraphQLError("Current password is incorrect.", {
           extensions: {
             code: "INCORRECT_PASSWORD",
           },
         });
       }
 
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      const hashedPassword = await bcrypt.hash(new_password, 10);
       user.user_password = hashedPassword;
 
-      // this will be in a seperate resolver and will be updated every time the user hits the dashboard page
-      // this might not be needed just on dashboard page
-      //user.user_last_login_date_time = new Date();
-
-      await userRepository.save(user);
-      /*
-      const keys = await redis.scan(0, 'MATCH', '*')
-
-      return new Promise((resolve) =>
-      req.session.destroy((err) => {
-        res.clearCookie("fap");
-        if (err) {
-          console.log(err);
-          resolve(false);
-          return;
-        }
-
-        resolve(true);
-      })
-    );
-    */
+      try {
+        await userRepository.save(user);
+      } catch (error) {
+        saveEntityError(
+          "changePasswordLoggedIn",
+          "user",
+          req.session.userId,
+          user,
+          error
+        );
+      }
+      // const keys = await redis.scan(0, 'MATCH', '*')
 
       return true;
-    } catch (err) {
-      console.log(err);
-      return err;
+    } catch (error) {
+      findEntityError(
+        "changePasswordLoggedIn ",
+        "user",
+        req.session.userId,
+        req.session.userId,
+        error
+      );
     }
   }
 
+  // changes the user's email when they are logged in by sending confirmation email
   @Mutation(() => Boolean)
   @UseMiddleware(isAuth)
-  // this sends an email so 10 times per day
-  @UseMiddleware(rateLimit(10, 60 * 60 * 24))
+  @UseMiddleware(rateLimit(10, 60 * 60 * 24)) // max 10 emails per day
   async changeEmail(
-    @Arg("newEmail") newEmail: string,
+    @Arg("changeEmailInput") {user_email}: ChangeEmailInputType,
     @Ctx() { req, redis }: MyContext
   ): Promise<Boolean> {
     try {
-      console.log("hi?");
-      console.log(newEmail);
       const userRepository = AppDataSource.getRepository(UserAccount);
       const user = await userRepository.findOneBy({
         user_id: req.session.userId,
       });
       if (user === null) {
-        throw new GraphQLError("Email does not exist.", {
-          extensions: {
-            code: "EMAIL_DOES_NOT_EXISTS",
-          },
-        });
+        entityNullError(
+          "changeEmail",
+          "user",
+          req.session.userId,
+          req.session.userId
+        );
       }
-      console.log(user);
       const token = uuidv4();
 
-      await redis.set(
-        token,
-        JSON.stringify({
-          user_id: user.user_id,
-          user_new_email: newEmail,
-        }),
-        "EX",
-        1000 * 60 * 60 * 24 * 3
-      ); // 3 days
+      try {
+        await redis.set(
+          token,
+          JSON.stringify({
+            user_id: user.user_id,
+            user_new_email: user_email,
+          }),
+          "EX",
+          1000 * 60 * 60 * 24 * 3
+        ); // 3 days
 
-      const changeEmailUrl = `http://192.168.0.208:3000/confirm-new-email?token=${token}`;
+        const changeEmailUrl = `http://192.168.0.208:3000/confirm-new-email?token=${token}`;
 
-      sendChangeEmailAddressEmail(user.user_username, changeEmailUrl);
+        try {
+          await sendChangeEmailAddressEmail(user.user_username, changeEmailUrl);
+        } catch (error) {
+          sendEmailError(
+            "changeEmail",
+            "change email address email",
+            user_email,
+            error,
+            req.session.userId
+          );
+        }
+      } catch (error) {
+        redisError("changeEmail", "SET", error, req.session.userId);
+      }
+
       return true;
     } catch (error) {
-      console.log(error);
-      return false;
+      findEntityError(
+        "changeEmail",
+        "user",
+        req.session.userId,
+        req.session.userId,
+        error
+      );
     }
   }
 
-  @Mutation(() => UserAccount)
-  @UseMiddleware(rateLimit(50, 60 * 5))
+  // confirms the email change request and updates the database when user clicks on link with active token
+  @Mutation(() => Boolean)
+  @UseMiddleware(rateLimit(20, 60 * 5)) // max 20 requests per 5 minutes
   async confirmChangeEmail(
-    @Arg("token") token: string,
+    @Arg("confirmChangeEmailInput") {token}: ConfirmChangeEmailInputType,
     @Ctx() { redis }: MyContext
-  ): Promise<UserAccount> {
+  ): Promise<Boolean> {
     try {
-      console.log("suo", token);
       const userObj = await redis.get(token);
-      if (!userObj) {
+      // expected error if user took too long to click on email and token expired
+      if (userObj === null) {
         throw new GraphQLError("Token Expired.", {
           extensions: {
             code: "TOKEN_EXPIRED",
@@ -434,29 +574,33 @@ export class UserResolver {
       const user = await userRepository.findOneBy({
         user_id: userInfo.user_id,
       });
-
-      //check if user still exists
       if (!user) {
-        throw new GraphQLError("User no longer exists.", {
-          extensions: {
-            code: "TOKEN_EXPIRED",
-          },
-        });
+        entityNullError(
+          "confirmChangeEmail",
+          "user",
+          userInfo.user_id,
+          userInfo.user_id
+        );
       }
 
       user.user_email = userInfo.user_new_email;
 
-      // this will be in a seperate resolver and will be updated every time the user hits the dashboard page
-      // this might not be needed just on dashboard page
-      //user.user_last_login_date_time = new Date();
+      try {
+        // these 2 executions don't depend on one another so will batch them.
+        await Promise.all([userRepository.save(user), redis.del(token)]);
+      } catch (error) {
+        saveEntityError(
+          "confirmChangeEmail",
+          "user or redis del in promise.all",
+          userInfo.user_id,
+          user,
+          error
+        );
+      }
 
-      const updatedUser = await userRepository.save(user);
-      await redis.del(token);
-
-      return updatedUser;
-    } catch (err) {
-      console.log(err);
-      return err;
+      return true;
+    } catch (error) {
+      redisError("confirmChangeEmail", "GET", error);
     }
   }
 }

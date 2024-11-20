@@ -2,8 +2,8 @@ import {
   InputType,
   Field
 } from "type-graphql";
-import { Length, MaxLength } from "class-validator";
-import { Pornstar } from "../entities/Pornstar";
+import { MinLength, MaxLength } from "class-validator";
+import Pornstar from "../entities/Pornstar";
 
 @InputType()
 class PornstarLinkObj {
@@ -40,8 +40,11 @@ class ModifiedPornstarTag {
 @InputType({ description: "new pornstar data" })
 export default class NewPornstarInput implements Partial<Pornstar>{
   @Field()
-  @Length(1, 50, {
-    message: 'Username is empty or more than 50 characters'
+  @MinLength(1, {
+    message: 'Name cannot be blank',
+  })
+  @MaxLength(50, {
+    message: 'Name cannot be more than 50 characters',
   })
   pornstar_name: string;
 

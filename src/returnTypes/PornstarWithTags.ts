@@ -1,7 +1,7 @@
 import { ObjectType, Field } from "type-graphql";
 
 @ObjectType()
-export class PornstarWithTags {
+export default class PornstarWithTags {
   @Field()
     pornstar_id: number;
 

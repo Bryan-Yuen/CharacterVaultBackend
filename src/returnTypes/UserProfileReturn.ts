@@ -1,11 +1,11 @@
 import { ObjectType, Field } from "type-graphql";
-import { UserAccount } from "../entities/UserAccount";
+import UserAccount from "../entities/UserAccount";
 
 @ObjectType()
-export class UserProfileReturn implements Partial<UserAccount>{
+export default class UserProfileReturn implements Partial<UserAccount> {
   @Field()
-    user_username: string;
+  user_username: string;
 
-    @Field()
-    user_email: string;
+  @Field()
+  user_email: string;
 }
