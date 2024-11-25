@@ -1,14 +1,10 @@
 import { ObjectType, Field } from "type-graphql";
-import AddPornstarReturn from "./AddPornstarReturn";
 
 @ObjectType()
-export default class EditPornstarReturn implements AddPornstarReturn{
+export default class EditPornstarReturn{
     // considering doing a return string or null but will do empty string
     @Field()
     s3Url: string
-
-    @Field()
-    pornstar_id: number
 
     @Field({nullable: true})
     pornstar_picture_path?: string

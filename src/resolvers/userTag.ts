@@ -26,7 +26,6 @@ import rateLimit from "../middleware/rateLimit";
 import entityNullError from "../errors/entityNullError";
 import findEntityError from "../errors/findEntityError";
 import saveEntityError from "../errors/saveEntityError";
-import unauthorizedEntityError from "../errors/unauthorizedEntityError";
 import transactionFailedError from "../errors/transactionFailedError";
 
 @Resolver(UserTag)
@@ -41,6 +40,7 @@ export class UserTagResolver {
     @Ctx() { req }: MyContext
   ): Promise<Boolean> {
     try {
+      console.log("booga");
       const userRepository = AppDataSource.getRepository(UserAccount);
       const user = await userRepository.findOne({
         where: {
@@ -48,14 +48,14 @@ export class UserTagResolver {
         },
         relations: ["userTags"],
       });
-      if (!user)
+      if (user === null)
         entityNullError(
           "addUserTag",
           "user",
           req.session.userId,
           req.session.userId
         );
-      if (!user.userTags)
+      if (user.userTags === null)
         entityNullError(
           "addUserTag",
           "userTags",
@@ -119,11 +119,16 @@ export class UserTagResolver {
     try {
       const userTagRepository = AppDataSource.getRepository(UserTag);
       const userTag = await userTagRepository.findOne({
-        where: { user_tag_id: user_tag_id },
-        relations: ["user", "user.userTags"],
+        where: {
+          user_tag_id: user_tag_id,
+          user: {
+            user_id: req.session.userId,
+          },
+        },
+        relations: ["user.userTags"],
       });
       // expected error if user deleted something and had another web page opened, but should be rare
-      if (!userTag) {
+      if (userTag === null) {
         entityNullError(
           "editUserTag",
           "userTag",
@@ -131,15 +136,7 @@ export class UserTagResolver {
           user_tag_id
         );
       }
-      if (!userTag.user) {
-        entityNullError(
-          "editUserTag",
-          "user",
-          req.session.userId,
-          req.session.userId
-        );
-      }
-      if (!userTag.user.userTags) {
+      if (userTag.user.userTags === null) {
         entityNullError(
           "editUserTag",
           "userTags",
@@ -147,15 +144,7 @@ export class UserTagResolver {
           req.session.userId
         );
       }
-      if (userTag.user.user_id !== req.session.userId) {
-        unauthorizedEntityError(
-          "editUserTag",
-          "userTag",
-          req.session.userId,
-          userTag.user.user_id,
-          user_tag_id
-        );
-      }
+
       const userTagExists = userTag.user.userTags.some(
         (tag) => tag.user_tag_text === user_tag_text
       );
@@ -221,25 +210,20 @@ export class UserTagResolver {
     try {
       const userTagRepository = AppDataSource.getRepository(UserTag);
       const userTag = await userTagRepository.findOne({
-        where: { user_tag_id: user_tag_id },
-        relations: ["user"],
+        where: {
+          user_tag_id: user_tag_id,
+          user: {
+            user_id: req.session.userId,
+          },
+        },
       });
 
       // expected error if user deleted something and had another web page opened, but should be rare
-      if (!userTag) {
+      if (userTag === null) {
         entityNullError(
           "deleteUserTag",
           "userTag",
           req.session.userId,
-          user_tag_id
-        );
-      }
-      if (userTag.user.user_id !== req.session.userId) {
-        unauthorizedEntityError(
-          "deleteUserTag",
-          "userTag",
-          req.session.userId,
-          userTag.user.user_id,
           user_tag_id
         );
       }
@@ -292,14 +276,14 @@ export class UserTagResolver {
         },
         relations: ["userTags"],
       });
-      if (!user)
+      if (user === null)
         entityNullError(
           "getUserTags",
           "user",
           req.session.userId,
           req.session.userId
         );
-      if (!user.userTags)
+      if (user.userTags === null)
         entityNullError(
           "getUserTags",
           "userTags",

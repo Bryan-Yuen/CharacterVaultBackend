@@ -52,6 +52,7 @@ const startServer = async () => {
   if (!process.env.COOKIE_SECRET) {
     throw new Error('COOKIE_SECRET environment variable is not defined');
   }
+  
   app.use(
     session({
       name: "fap",

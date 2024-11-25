@@ -20,25 +20,8 @@ class PornstarLinkObj {
   pornstar_link_url: string;
 }
 
-@InputType()
-class UserTagId {
-  @Field()
-   user_tag_id: number;
-
-}
-
-@InputType()
-class ModifiedPornstarTag {
-  @Field()
-  tag_text: string
-
-  @Field(() => UserTagId)
-  user_tag: UserTagId
-}
-
-// i want to see how this implements work if i put something wrong or different
 @InputType({ description: "new pornstar data" })
-export default class NewPornstarInput implements Partial<Pornstar>{
+export default class AddPornstarInputType implements Partial<Pornstar>{
   @Field()
   @MinLength(1, {
     message: 'Name cannot be blank',
@@ -48,15 +31,18 @@ export default class NewPornstarInput implements Partial<Pornstar>{
   })
   pornstar_name: string;
 
+  // true means they want to upload a picture, false means they have no picture
   @Field()
   pornstar_picture: boolean;
 
-  /*
+ 
   @Field(() => [String])
-  pornstar_tags?: string[];
-  */
+  pornstar_tags_text?: string[];
+
+ /*
   @Field(() => [ModifiedPornstarTag])
   pornstar_tags_obj?: ModifiedPornstarTag[];
+  */
 
   @Field(() => [PornstarLinkObj])
   pornstar_links_title_url?: PornstarLinkObj[];

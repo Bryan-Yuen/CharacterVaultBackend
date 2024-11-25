@@ -1,5 +1,5 @@
 import { InputType, Field } from "type-graphql";
-import NewPornstarInput from "./NewPornstarInput";
+import Pornstar from "../entities/Pornstar";
 import { MaxLength, MinLength } from "class-validator";
 
 @InputType()
@@ -11,25 +11,8 @@ class ImageUpdates {
   didDelete: boolean;
 }
 
-/*
 @InputType()
-class NewPornstarLinkObj {
-  @Field()
-  @MaxLength(100, {
-    message: 'name is more than 90 characters',
-  })
-  pornstar_link_title: string;
-
-  @Field()
-  @MaxLength(255, {
-    message: 'name is more than 90 characters',
-  })
-  pornstar_link_url: string;
-}
-*/
-
-@InputType()
-class EditPornstarLinkObjBackend {
+class EditPornstarLinkObj {
   @Field()
   pornstar_link_id: number;
 
@@ -46,37 +29,20 @@ class EditPornstarLinkObjBackend {
   pornstar_link_url: string;
 }
 
-// i'll probably make a type folder called input types so i don't have to use different names
-@InputType()
-class UserTagIdEdit {
-  @Field()
-   user_tag_id: number;
-
-}
-
-@InputType()
-class ModifiedPornstarTagEdit {
-  @Field()
-  tag_text: string
-
-  @Field(() => UserTagIdEdit)
-  user_tag: UserTagIdEdit
-}
-
 @InputType()
 class LinkUpdates {
-  @Field(() => [EditPornstarLinkObjBackend])
-  edited_links: EditPornstarLinkObjBackend[];
+  @Field(() => [EditPornstarLinkObj])
+  edited_links: EditPornstarLinkObj[];
 
   @Field(() => [Number])
   deleted_links_ids?: number[];
 
-  @Field(() => [EditPornstarLinkObjBackend])
-  new_links: EditPornstarLinkObjBackend[];
+  @Field(() => [EditPornstarLinkObj])
+  new_links: EditPornstarLinkObj[];
 }
 
 @InputType({ description: "update pornstar data" })
-export default class EditPornstarInput implements Partial<NewPornstarInput> {
+export default class EditPornstarInputType implements Partial<Pornstar> {
   @Field()
   @MinLength(1, {
     message: 'Name cannot be blank',
@@ -89,8 +55,8 @@ export default class EditPornstarInput implements Partial<NewPornstarInput> {
   @Field()
   pornstar_picture: boolean;
 
-  @Field(() => [ModifiedPornstarTagEdit])
-  pornstar_tags_obj?: ModifiedPornstarTagEdit[];
+  @Field(() => [String])
+  pornstar_tags_text?: string[];
 
   @Field()
   pornstar_id: number;

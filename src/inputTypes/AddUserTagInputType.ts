@@ -12,8 +12,8 @@ export default class AddUserTagInputType implements Partial<UserTag> {
   @MaxLength(50, {
     message: "Tag cannot be more than 50 characters",
   })
-  @Matches(/^[a-z]+$/, {
-    message: "Lowercase only.",
-  })
+  @Matches(/^[a-z\s]+$/, {
+    message: "Lowercase letters and spaces only.",
+  })  
   user_tag_text: string;
 }

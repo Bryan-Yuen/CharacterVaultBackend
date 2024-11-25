@@ -22,11 +22,6 @@ export default class Pornstar {
     @Column({length: 50})
     pornstar_name: string;
 
-    /*
-    @Field({nullable: true})
-    @Column({length: 90, nullable: true})
-    pornstar_picture_path: string | null;
-    */
     @Field({nullable: true})
     @Column({length: 90, nullable: true})
     pornstar_picture_path?: string;
