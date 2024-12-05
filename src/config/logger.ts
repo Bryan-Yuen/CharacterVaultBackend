@@ -12,7 +12,7 @@ const logger = winston.createLogger({
   transports: [],
 });
 
-if (process.env.NODE_ENV === "production") {
+if (process.env.NODE_ENV === "PRODUCTION") {
   logger.add(
     new Loggly({
       token: process.env.LOGGLY_TOKEN,

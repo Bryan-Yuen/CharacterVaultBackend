@@ -8,6 +8,9 @@ export default function sendEmailError(
   error: any,
   user_id?: number | undefined
 ): never {
+  if (error instanceof GraphQLError) {
+    throw error;
+  }
   logger.error(`${email_type} failed to send for email: ${email}`, {
     resolver,
     email_type,

@@ -8,6 +8,9 @@ export default function findEntityError(
   entity_id: number | undefined,
   error: any
 ): never {
+  if (error instanceof GraphQLError) {
+    throw error;
+  }
   logger.error(`Error fetching ${entity}`, {
     resolver,
     user_id,

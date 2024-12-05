@@ -8,6 +8,9 @@ export default function transactionFailedError(
   entity_id: number | undefined,
   error: any
 ): never {
+  if (error instanceof GraphQLError) {
+    throw error;
+  }
   logger.error(`Transaction failed updating: ${entity} with entity_id: ${entity_id}`, {
     resolver,
     user_id,

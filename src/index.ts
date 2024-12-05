@@ -25,7 +25,7 @@ if (!process.env.PRODUCTION && !process.env.DEVELOPMENT_URL) {
 }
 
 export type MyContext = {
-  req: Request & { session?: Session & { userId?: number } };
+  req: Request & { session?: Session & { userId?: number, verified?: boolean } };
   res: Response;
   redis: Redis;
 };

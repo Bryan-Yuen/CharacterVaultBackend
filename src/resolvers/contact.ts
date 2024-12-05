@@ -3,25 +3,29 @@ import UserAccount from "../entities/UserAccount";
 import { MyContext } from "../index";
 // dependencies
 import { Resolver, Mutation, Arg, Ctx, UseMiddleware } from "type-graphql";
-import { GraphQLError } from "graphql";
 // middleware
 import isAuth from "../middleware/isAuth";
-import rateLimit from "../middleware/rateLimit";
+import versionChecker from "../middleware/versionChecker";
+//import rateLimit from "../middleware/rateLimit";
 // config
 import AppDataSource from "../config/db";
-import logger from "../config/logger";
 // emails
-import sendHomePageContactEmail  from "../emails/contactFormEmail";
+import sendHomePageContactEmail from "../emails/contactFormEmail";
 import sendSupportEmail from "../emails/supportFormEmail";
 // input types
 import ContactEmailInputType from "../inputTypes/ContactEmailInputType";
 import SupportEmailInputType from "../inputTypes/SupportEmailInputType";
+// errors
+import entityNullError from "../errors/entityNullError";
+import sendEmailError from "../errors/sendEmailError";
+import findEntityError from "../errors/findEntityError";
 
 @Resolver()
 export class ContactResolver {
   // contact form for when users on homepage, not logged in
   @Mutation(() => Boolean)
-  @UseMiddleware(rateLimit(5, 60 * 60 * 24)) // max 5 emails per person/ip address per day
+  @UseMiddleware(versionChecker)
+  //@UseMiddleware(rateLimit(5, 60 * 60 * 24)) // max 5 emails per person/ip address per day
   async contactForm(
     @Arg("contactFormInput") { form_email, form_message }: ContactEmailInputType
   ): Promise<Boolean> {
@@ -29,75 +33,66 @@ export class ContactResolver {
       await sendHomePageContactEmail(form_email, form_message);
       return true;
     } catch (error) {
-      logger.error("Error sending contact email", {
-        resolver: "contactForm",
-        form_email,
-        form_message,
+      sendEmailError(
+        "contactForm",
+        "contact email",
+        "contact Form, no username",
         error,
-      });
-      throw new GraphQLError("Internal server error.", {
-        extensions: { code: "INTERNAL_SERVER_ERROR" },
-      });
+        -1
+      );
     }
   }
 
   // contact form for when user is logged in
   @Mutation(() => Boolean)
   @UseMiddleware(isAuth)
-  @UseMiddleware(rateLimit(5, 60 * 60)) // max 5 emails per hour
+  @UseMiddleware(versionChecker)
+  //@UseMiddleware(rateLimit(5, 60 * 60)) // max 5 emails per hour
   async supportForm(
     @Arg("supportFormInput")
     { form_subject, form_message }: SupportEmailInputType,
     @Ctx() { req }: MyContext
   ): Promise<Boolean> {
-    const userRepository = AppDataSource.getRepository(UserAccount);
-    let user: UserAccount | null = null;
     try {
-      user = await userRepository.findOneBy({
+      const userRepository = AppDataSource.getRepository(UserAccount);
+      const user = await userRepository.findOneBy({
         user_id: req.session.userId,
       });
-    } catch (error) {
-      logger.error(`Error fetching user`, {
-        resolver: "supportForm",
-        user_id: req.session.userId,
-        error,
-      });
-      throw new GraphQLError("Internal server error.", {
-        extensions: { code: "INTERNAL_SERVER_ERROR" },
-      });
-    }
-    if (!user) {
-      logger.error(`user is null`, {
-        resolver: "supportForm",
-        user_id: req.session.userId,
-      });
-      throw new GraphQLError("User not found.", {
-        extensions: {
-          code: "EMAIL_NOT_REGISTERED",
-        },
-      });
-    }
+      if (user === null) {
+        entityNullError(
+          "supportForm",
+          "user",
+          req.session.userId,
+          req.session.userId
+        );
+      }
 
-    try {
-      await sendSupportEmail(
-        user.user_email,
-        user.user_email,
-        form_subject,
-        form_message
+      try {
+        await sendSupportEmail(
+          user.user_email,
+          user.user_username,
+          form_subject,
+          form_message
+        );
+      } catch (error) {
+        sendEmailError(
+          "supportForm",
+          "support email",
+          user.user_username,
+          error,
+          req.session.userId
+        );
+      }
+
+      return true;
+    } catch (error) {
+      findEntityError(
+        "supportForm",
+        "user",
+        req.session.userId,
+        req.session.userId,
+        error
       );
-    } catch (error) {
-      logger.error("Error sending contact email", {
-        resolver: "contactForm",
-        user_id: req.session.userId,
-        form_subject,
-        form_message,
-        error,
-      });
-      throw new GraphQLError("Internal server error.", {
-        extensions: { code: "INTERNAL_SERVER_ERROR" },
-      });
     }
-
-    return true;
   }
 }

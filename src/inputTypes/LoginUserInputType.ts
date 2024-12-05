@@ -2,7 +2,7 @@ import {
   InputType,
   Field
 } from "type-graphql";
-import { MaxLength, MinLength, Matches } from "class-validator";
+import { MaxLength,  Matches } from "class-validator";
 import UserAccount from "../entities/UserAccount";
 
 // if the input doesnt satisfy these conditions return error to user, no need to query database.
@@ -18,9 +18,6 @@ export default class LoginUserInputType implements Partial<UserAccount>{
   user_email: string;
 
   @Field()
-  @MinLength(6, {
-    message: "Password is less than 6 characters",
-  })
   @MaxLength(64, {
     message: "Password cannot be more than 64 characters",
   })

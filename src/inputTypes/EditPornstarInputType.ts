@@ -55,11 +55,15 @@ export default class EditPornstarInputType implements Partial<Pornstar> {
   @Field()
   pornstar_picture: boolean;
 
+  // need to validate this
   @Field(() => [String])
   pornstar_tags_text?: string[];
 
   @Field()
-  pornstar_id: number;
+  @MaxLength(100, {
+    message: 'Url slug cannot be more than 50 characters',
+  })
+  pornstar_url_slug: string;
 
   @Field(() => ImageUpdates)
   imageUpdate: ImageUpdates;

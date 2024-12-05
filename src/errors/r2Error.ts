@@ -7,6 +7,9 @@ export default function r2Error(
   user_id: number | undefined,
   error: any,
 ): never {
+  if (error instanceof GraphQLError) {
+    throw error;
+  }
   logger.error(`R2 ${redis_method} operation error`, {
     resolver,
     redis_method,

@@ -11,11 +11,12 @@ const mg = mailgun.client({username: 'api', key: process.env.MAILGUN_API_KEY});
 // try catch will be done on the resolver side
 const sendHomePageContactEmail = async (email : string, message : string) => {
   await mg.messages.create('myfapsheet.com', {
-  	from: email,
+    from: `Support <support@myfapsheet.com>`, // Use your email address here
   	to: ["support@myfapsheet.com"],
   	subject: "MyFapSheet Contact Message",
   	text: message,
-  	html: message
+  	html: message,
+		'h:Reply-To': `${email}` // This specifies where replies should go (user's email)
   })
 }
 

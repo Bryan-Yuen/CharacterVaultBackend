@@ -36,6 +36,7 @@ import EditPornstarReturn from "../returnTypes/EditPornstarReturn";
 // middleware
 import isAuth from "../middleware/isAuth";
 import rateLimit from "../middleware/rateLimit";
+import versionChecker from "../middleware/versionChecker";
 // errors
 import entityNullError from "../errors/entityNullError";
 import findEntityError from "../errors/findEntityError";
@@ -54,6 +55,7 @@ export class PornstarResolver {
   // adds a new pornstar with optional tags and links and also optionally returns an s3 url to upload if requested.
   @Mutation(() => AddPornstarReturn)
   @UseMiddleware(isAuth)
+  @UseMiddleware(versionChecker)
   @UseMiddleware(rateLimit(50, 60 * 5)) // max 50 requests per 5 minutes
   async addPornstar(
     @Arg("addPornstarInput")
@@ -132,9 +134,6 @@ export class PornstarResolver {
 
       const pornstar = new Pornstar();
 
-      pornstar.pornstar_name = pornstar_name;
-      pornstar.user = user;
-
       let url = "";
       if (pornstar_picture) {
         const id = `${uuidv4()}-${req.session.userId}-${Date.now()}`;
@@ -150,6 +149,11 @@ export class PornstarResolver {
           );
         }
       }
+      pornstar.pornstar_name = pornstar_name;
+      pornstar.user = user;
+      pornstar.pornstar_url_slug = `${uuidv4()}-${
+        req.session.userId
+      }-${Date.now()}`;
 
       // we could do some next level promise.all if user has links and tags but that can be for later
       try {
@@ -186,12 +190,18 @@ export class PornstarResolver {
             let newPornstarLinks: PornstarLink[] = [];
 
             for (let i = 0; i < pornstar_links_title_url.length; i++) {
-              newPornstarLinks[i] = new PornstarLink();
-              newPornstarLinks[i].pornstar = savePornstar;
-              newPornstarLinks[i].pornstar_link_title =
-                pornstar_links_title_url[i].pornstar_link_title;
-              newPornstarLinks[i].pornstar_link_url =
-                pornstar_links_title_url[i].pornstar_link_url;
+              // we need at least one of them to have something. if both are empty skip
+              if (
+                pornstar_links_title_url[i].pornstar_link_title ||
+                pornstar_links_title_url[i].pornstar_link_url
+              ) {
+                newPornstarLinks[i] = new PornstarLink();
+                newPornstarLinks[i].pornstar = savePornstar;
+                newPornstarLinks[i].pornstar_link_title =
+                  pornstar_links_title_url[i].pornstar_link_title;
+                newPornstarLinks[i].pornstar_link_url =
+                  pornstar_links_title_url[i].pornstar_link_url;
+              }
             }
 
             await transactionManager
@@ -204,7 +214,7 @@ export class PornstarResolver {
 
           return {
             s3Url: url,
-            pornstar_id: savePornstar.pornstar_id,
+            pornstar_url_slug: savePornstar.pornstar_url_slug,
           };
         });
       } catch (error) {
@@ -219,7 +229,7 @@ export class PornstarResolver {
       }
     } catch (error) {
       findEntityError(
-        "addUserTag",
+        "addPornstar",
         "user",
         req.session.userId,
         req.session.userId,
@@ -231,11 +241,12 @@ export class PornstarResolver {
   // edits pornstar: name, picture, tags, and links and returns the updated pornsta
   @Mutation(() => EditPornstarReturn)
   @UseMiddleware(isAuth)
+  @UseMiddleware(versionChecker)
   @UseMiddleware(rateLimit(50, 60 * 5)) // max 50 requests per 5 minutes
   async editPornstar(
     @Arg("editPornstarInput")
     {
-      pornstar_id,
+      pornstar_url_slug,
       pornstar_name,
       pornstar_picture,
       imageUpdate,
@@ -245,12 +256,13 @@ export class PornstarResolver {
     @Ctx() { req }: MyContext
   ): Promise<EditPornstarReturn> {
     try {
+      console.log("edit called");
       const pornstarRepository = AppDataSource.getRepository(Pornstar);
       const pornstar = await pornstarRepository.findOne({
         where: {
-          pornstar_id: pornstar_id,
+          pornstar_url_slug: pornstar_url_slug,
           user: {
-            user_id: req.session.userId
+            user_id: req.session.userId,
           },
         },
         relations: ["user.userTags"],
@@ -261,7 +273,7 @@ export class PornstarResolver {
           "editPornstar",
           "pornstar",
           req.session.userId,
-          pornstar_id
+          req.session.userId
         );
       }
       if (pornstar.user.userTags === null) {
@@ -269,7 +281,7 @@ export class PornstarResolver {
           "editPornstar",
           "pornstar.user.userTags",
           req.session.userId,
-          pornstar_id
+          req.session.userId
         );
       }
       pornstar.pornstar_name = pornstar_name;
@@ -473,9 +485,12 @@ export class PornstarResolver {
                 );
               }
 
-              tempLink.pornstar_link_title = link.pornstar_link_title;
-              tempLink.pornstar_link_url = link.pornstar_link_url;
-              await transactionManager.save(tempLink);
+              // we need at least one of them to have something. if both are empty remove from database
+              if (link.pornstar_link_title || link.pornstar_link_url) {
+                tempLink.pornstar_link_title = link.pornstar_link_title;
+                tempLink.pornstar_link_url = link.pornstar_link_url;
+                await transactionManager.save(tempLink);
+              } else await transactionManager.remove(tempLink);
             }
           }
 
@@ -483,12 +498,18 @@ export class PornstarResolver {
           if (pornstar_links_updates.new_links) {
             let newPornstarLinks: PornstarLink[] = [];
             for (let i = 0; i < pornstar_links_updates.new_links.length; i++) {
-              newPornstarLinks[i] = new PornstarLink();
-              newPornstarLinks[i].pornstar = updatedPornstar;
-              newPornstarLinks[i].pornstar_link_title =
-                pornstar_links_updates.new_links[i].pornstar_link_title;
-              newPornstarLinks[i].pornstar_link_url =
-                pornstar_links_updates.new_links[i].pornstar_link_url;
+              // we need at least one of them to have something. if both are empty skip
+              if (
+                pornstar_links_updates.new_links[i].pornstar_link_title ||
+                pornstar_links_updates.new_links[i].pornstar_link_url
+              ) {
+                newPornstarLinks[i] = new PornstarLink();
+                newPornstarLinks[i].pornstar = updatedPornstar;
+                newPornstarLinks[i].pornstar_link_title =
+                  pornstar_links_updates.new_links[i].pornstar_link_title;
+                newPornstarLinks[i].pornstar_link_url =
+                  pornstar_links_updates.new_links[i].pornstar_link_url;
+              }
             }
 
             await transactionManager
@@ -499,33 +520,6 @@ export class PornstarResolver {
               .execute();
           }
 
-          /*
-          const updatedPornstarWithTagsAndLinks =
-            await pornstarRepository.findOne({
-              where: {
-                pornstar_id: pornstar_id,
-              },
-              //user_id: req.session.userId,
-              relations: [
-                "pornstar_tags",
-                "pornstar_tags.user_tag",
-                "pornstar_links",
-              ],
-            });
-          if (!updatedPornstarWithTagsAndLinks) {
-            throw new GraphQLError("Pornstar not found.", {
-              extensions: {
-                code: "PORNSTAR_NOT_FOUND",
-              },
-            });
-          }
-          console.log("hax", {
-            s3Url: url,
-            pornstar_id: updatedPornstar.pornstar_id,
-            pornstar_picture_path: updatedPornstar.pornstar_picture_path,
-            pornstar: updatedPornstarWithTagsAndLinks,
-          });
-          */
           return {
             s3Url: url,
             pornstar_picture_path: updatedPornstar.pornstar_picture_path,
@@ -537,7 +531,7 @@ export class PornstarResolver {
           "editPornstar",
           "pornstar",
           req.session.userId,
-          pornstar_id,
+          pornstar.pornstar_id,
           error
         );
       }
@@ -555,9 +549,10 @@ export class PornstarResolver {
   // deletes pornstar by removing image from s3, then tags and links, and finally the pornstar itself
   @Mutation(() => Boolean)
   @UseMiddleware(isAuth)
+  @UseMiddleware(versionChecker)
   @UseMiddleware(rateLimit(50, 60 * 5)) // max 50 requests per 5 minutes
   async deletePornstar(
-    @Arg("deletePornstarInput") { pornstar_id }: DeletePornstarInputType,
+    @Arg("deletePornstarInput") { pornstar_url_slug }: DeletePornstarInputType,
     @Ctx() { req }: MyContext
   ): Promise<boolean> {
     try {
@@ -565,9 +560,9 @@ export class PornstarResolver {
 
       const pornstar = await pornstarRepository.findOne({
         where: {
-          pornstar_id: pornstar_id,
+          pornstar_url_slug: pornstar_url_slug,
           user: {
-            user_id: req.session.userId
+            user_id: req.session.userId,
           },
         },
       });
@@ -579,6 +574,8 @@ export class PornstarResolver {
           req.session.userId,
           req.session.userId
         );
+        // consider just returning true and letting user believe it was deleted from the action
+        // return true;
       }
 
       if (pornstar.pornstar_picture_path) {
@@ -605,7 +602,7 @@ export class PornstarResolver {
             .delete()
             .from(PornstarTag)
             .where("pornstar_id = :pornstar_id", {
-              pornstar_id: pornstar_id,
+              pornstar_id: pornstar.pornstar_id,
             })
             .execute();
 
@@ -615,7 +612,7 @@ export class PornstarResolver {
             .delete()
             .from(PornstarLink)
             .where("pornstar_id = :pornstar_id", {
-              pornstar_id: pornstar_id,
+              pornstar_id: pornstar.pornstar_id,
             })
             .execute();
 
@@ -629,7 +626,7 @@ export class PornstarResolver {
           "deletePornstar",
           "pornstar",
           req.session.userId,
-          pornstar_id,
+          pornstar.pornstar_id,
           error
         );
       }
@@ -638,7 +635,7 @@ export class PornstarResolver {
         "deletePornstar",
         "pornstar",
         req.session.userId,
-        pornstar_id,
+        req.session.userId,
         error
       );
     }
@@ -647,28 +644,30 @@ export class PornstarResolver {
   // need to return pornstar type with tags and links too
   @Query(() => PornstarWithTagsAndLinks)
   @UseMiddleware(isAuth)
+  @UseMiddleware(versionChecker)
   @UseMiddleware(rateLimit(50, 60 * 5)) // max 50 requests per 5 minutes
   async getPornstar(
-    @Arg("getPornstarInput") { pornstar_id }: GetPornstarInputType,
+    @Arg("getPornstarInput") { pornstar_url_slug }: GetPornstarInputType,
     @Ctx() { req }: MyContext
   ): Promise<PornstarWithTagsAndLinks> {
     const pornstarRepository = AppDataSource.getRepository(Pornstar);
-
+    console.log("get pornstar has been called");
     const pornstar = await pornstarRepository.findOne({
       where: {
-        pornstar_id: pornstar_id,
+        pornstar_url_slug: pornstar_url_slug,
         user: {
-          user_id: req.session.userId
+          user_id: req.session.userId,
         },
       },
       relations: ["pornstar_tags", "pornstar_links"],
     });
+    // expected error if user enters wrong slug for some reason or porntsar previously deleted
     if (pornstar === null) {
       entityNullError(
         "getPornstar",
         "pornstar",
         req.session.userId,
-        pornstar_id
+        req.session.userId
       );
     }
     if (pornstar.pornstar_tags === null) {
@@ -676,7 +675,7 @@ export class PornstarResolver {
         "getPornstar",
         "pornstar",
         req.session.userId,
-        pornstar_id
+        req.session.userId
       );
     }
     if (pornstar.pornstar_links === null) {
@@ -684,7 +683,7 @@ export class PornstarResolver {
         "getPornstar",
         "pornstar",
         req.session.userId,
-        pornstar_id
+        req.session.userId
       );
     }
 
@@ -694,10 +693,14 @@ export class PornstarResolver {
   // returns pornstars and their associated pornstar tags texts in one object array.
   @Query(() => [PornstarWithTags])
   @UseMiddleware(isAuth)
+  @UseMiddleware(versionChecker)
   @UseMiddleware(rateLimit(50, 60 * 5)) // max 50 requests per 5 minutes
   async getAllPornstarsAndTags(
     @Ctx() { req }: MyContext
   ): Promise<PornstarWithTags[]> {
+    try {
+      console.log("getallporn ha ben called");
+    
     const userRepository = AppDataSource.getRepository(UserAccount);
     const user = await userRepository.findOne({
       where: {
@@ -723,7 +726,7 @@ export class PornstarResolver {
     }
     const restructuredPornstars: PornstarWithTags[] = user.pornstars.map(
       (pornstar) => ({
-        pornstar_id: pornstar.pornstar_id,
+        pornstar_url_slug: pornstar.pornstar_url_slug,
         pornstar_name: pornstar.pornstar_name,
         pornstar_picture_path: pornstar.pornstar_picture_path,
         pornstar_tags_text: pornstar.pornstar_tags.map(
@@ -733,5 +736,14 @@ export class PornstarResolver {
     );
 
     return restructuredPornstars;
+    } catch (error) {
+      findEntityError(
+        "getAllPornstarsAndTags",
+        "pornstar",
+        req.session.userId,
+        req.session.userId,
+        error
+      );
+    }
   }
 }

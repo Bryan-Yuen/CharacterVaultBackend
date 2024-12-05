@@ -26,6 +26,10 @@ export default class Pornstar {
     @Column({length: 90, nullable: true})
     pornstar_picture_path?: string;
 
+    @Field()
+    @Column({length: 100})
+    pornstar_url_slug: string;
+
     @Field(() => UserAccount)
     @ManyToOne(() => UserAccount, user => user.pornstars)
     @JoinColumn({ name: 'user_id' })

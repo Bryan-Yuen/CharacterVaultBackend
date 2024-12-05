@@ -7,7 +7,7 @@ export default class AddPornstarReturn {
     s3Url: string
 
     @Field()
-    pornstar_id: number
+    pornstar_url_slug: string
 
     @Field({nullable: true})
     pornstar_picture_path?: string

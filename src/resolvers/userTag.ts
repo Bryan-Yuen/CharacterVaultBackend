@@ -19,9 +19,13 @@ import AppDataSource from "../config/db";
 import AddUserTagInputType from "../inputTypes/AddUserTagInputType";
 import DeleteUserTagInputType from "../inputTypes/DeleteUserTaginputType";
 import EditUserTagInputType from "../inputTypes/EditUserTagInputType";
+// return types
+import AddUserTagReturn from "../returnTypes/AddUserTagReturn";
+import EditUserTagReturn from "../returnTypes/EditUserTagReturn";
 // middleware
 import isAuth from "../middleware/isAuth";
 import rateLimit from "../middleware/rateLimit";
+import versionChecker from "../middleware/versionChecker";
 // errors
 import entityNullError from "../errors/entityNullError";
 import findEntityError from "../errors/findEntityError";
@@ -32,15 +36,15 @@ import transactionFailedError from "../errors/transactionFailedError";
 export class UserTagResolver {
   // adds new user tag for account
   // if we implement caching we need to return the id too.
-  @Mutation(() => Boolean)
+  @Mutation(() => AddUserTagReturn)
   @UseMiddleware(isAuth)
+  @UseMiddleware(versionChecker)
   @UseMiddleware(rateLimit(50, 60 * 5)) // max 50 requests per 5 minutes
   async addUserTag(
     @Arg("newUserTag") { user_tag_text }: AddUserTagInputType,
     @Ctx() { req }: MyContext
-  ): Promise<Boolean> {
+  ): Promise<AddUserTagReturn> {
     try {
-      console.log("booga");
       const userRepository = AppDataSource.getRepository(UserAccount);
       const user = await userRepository.findOne({
         where: {
@@ -84,7 +88,10 @@ export class UserTagResolver {
       const userTagRepository = AppDataSource.getRepository(UserTag);
 
       try {
-        await userTagRepository.save(userTag);
+        const saveUsertag = await userTagRepository.save(userTag);
+        return {
+          user_tag_id : saveUsertag.user_tag_id
+        }
       } catch (error) {
         saveEntityError(
           "addUserTag",
@@ -94,8 +101,6 @@ export class UserTagResolver {
           error
         );
       }
-
-      return true;
     } catch (error) {
       findEntityError(
         "addUserTag",
@@ -108,14 +113,15 @@ export class UserTagResolver {
   }
 
   // edits user tag for account, will also change for all pornstars tags using this user tag
-  @Mutation(() => Boolean)
+  @Mutation(() => EditUserTagReturn)
   @UseMiddleware(isAuth)
+  @UseMiddleware(versionChecker)
   @UseMiddleware(rateLimit(50, 60 * 5)) // max 50 requests per 5 minutes
   async editUserTag(
     @Arg("editUserTagInput")
     { user_tag_id, user_tag_text }: EditUserTagInputType,
     @Ctx() { req }: MyContext
-  ): Promise<Boolean> {
+  ): Promise<EditUserTagReturn> {
     try {
       const userTagRepository = AppDataSource.getRepository(UserTag);
       const userTag = await userTagRepository.findOne({
@@ -135,6 +141,12 @@ export class UserTagResolver {
           req.session.userId,
           user_tag_id
         );
+      }
+      // if the user put the same as current, just return and save resources.
+      if (userTag.user_tag_text === user_tag_text) {
+        return {
+          user_tag_id: userTag.user_tag_id,
+        };
       }
       if (userTag.user.userTags === null) {
         entityNullError(
@@ -161,20 +173,25 @@ export class UserTagResolver {
       userTag.user_tag_text = user_tag_text;
 
       try {
-        await AppDataSource.transaction(async (transactionManager) => {
-          await Promise.all([
-            transactionManager.save(userTag),
-            transactionManager
-              .createQueryBuilder()
-              .update(PornstarTag)
-              .set({
-                tag_text: user_tag_text,
-              })
-              .where("user_tag_id = :user_tag_id", {
-                user_tag_id: user_tag_id,
-              })
-              .execute(),
-          ]);
+        return await AppDataSource.transaction(async (transactionManager) => {
+          const saveUserTag = await transactionManager.save(userTag);
+
+          // Update PornstarTag
+          await transactionManager
+            .createQueryBuilder()
+            .update(PornstarTag)
+            .set({
+              tag_text: user_tag_text,
+            })
+            .where("user_tag_id = :user_tag_id", {
+              user_tag_id: user_tag_id,
+            })
+            .execute();
+      
+          // Return the user_tag_id from saveUserTag
+          return {
+            user_tag_id: saveUserTag.user_tag_id,
+          };
         });
       } catch (error) {
         // Handle errors and roll back if needed
@@ -186,8 +203,6 @@ export class UserTagResolver {
           error
         );
       }
-
-      return true;
     } catch (error) {
       findEntityError(
         "editUserTag",
@@ -202,6 +217,7 @@ export class UserTagResolver {
   // deletes user tag for account, will also delete in all pornstar tags using this tag
   @Mutation(() => Boolean)
   @UseMiddleware(isAuth)
+  @UseMiddleware(versionChecker)
   @UseMiddleware(rateLimit(50, 60 * 5)) // max 50 requests per 5 minutes
   async deleteUserTag(
     @Arg("userTagId") { user_tag_id }: DeleteUserTagInputType,
@@ -265,6 +281,7 @@ export class UserTagResolver {
   // returns all usertags for an account
   @Query(() => [UserTag])
   @UseMiddleware(isAuth)
+  @UseMiddleware(versionChecker)
   @UseMiddleware(rateLimit(50, 60 * 5)) // max 50 requests per 5 minutes
   async getUserTags(@Ctx() { req }: MyContext): Promise<UserTag[]> {
     try {
@@ -290,7 +307,6 @@ export class UserTagResolver {
           req.session.userId,
           req.session.userId
         );
-
       return user.userTags;
     } catch (error) {
       findEntityError(

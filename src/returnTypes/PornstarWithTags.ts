@@ -3,7 +3,7 @@ import { ObjectType, Field } from "type-graphql";
 @ObjectType()
 export default class PornstarWithTags {
   @Field()
-    pornstar_id: number;
+    pornstar_url_slug: string;
 
     @Field()
     pornstar_name: string;

@@ -1,14 +1,21 @@
-import FormData from 'form-data';
-import Mailgun from 'mailgun.js';
+import FormData from "form-data";
+import Mailgun from "mailgun.js";
 const mailgun = new Mailgun(FormData);
-import 'dotenv/config';
+import "dotenv/config";
 
 if (!process.env.MAILGUN_API_KEY) {
-  throw new Error('MAILGUN_API_KEY environment variable is not defined');
+  throw new Error("MAILGUN_API_KEY environment variable is not defined");
 }
-const mg = mailgun.client({username: 'api', key: process.env.MAILGUN_API_KEY});
+const mg = mailgun.client({
+  username: "api",
+  key: process.env.MAILGUN_API_KEY,
+});
 
-const sendForgotPasswordEmail = async (username : string, changePasswordUrl : string) => {
+const sendForgotPasswordEmail = async (
+  username: string,
+  email: string,
+  changePasswordUrl: string
+) => {
   const htmlContent = `
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 500px; margin: 0 auto; display:block; font-family: Arial, sans-serif;">
         <tr>
@@ -16,7 +23,7 @@ const sendForgotPasswordEmail = async (username : string, changePasswordUrl : st
                 <table width="100%" cellspacing="0" cellpadding="0">
                     <tr>
                         <td style="display: flex; align-items: center;">
-                            <img src="https://pub-ee6da315dd594adea480914270692ddd.r2.dev/MyFapSheetLogo.png?1" width="26" alt="Logo" />
+                            <img src="https://email-pictures.myfapsheet.com/MyFapSheetLogo.png" width="26" alt="Logo" />
                             <span style="font-weight: 600; font-size: 22px; margin-left: 10px;">MyFapSheet</span>
                         </td>
                     </tr>
@@ -58,15 +65,18 @@ const sendForgotPasswordEmail = async (username : string, changePasswordUrl : st
     </table>
 `;
 
-  mg.messages.create('myfapsheet.com', {
-  	from: "MyFapSheet <noreply@myfapsheet.com>",
-  	to: ["bryanyuen@myfapsheet.com"],
-  	subject: "Reset password request",
-  	text: "Hi " + username + ", we've received a request to reset your password. To process with changing your password, please click this link:" + changePasswordUrl,
-  	html: htmlContent
-  })
-  .then(msg => console.log(msg)) // logs response data
-  .catch(err => console.log(err)); // logs any error
-}
+  await mg.messages.create("myfapsheet.com", {
+    from: "MyFapSheet <noreply@myfapsheet.com>",
+    to: [email],
+    //to: ["bryanyuen@myfapsheet.com"],
+    subject: "Reset password request",
+    text:
+      "Hi " +
+      username +
+      ", we've received a request to reset your password. To process with changing your password, please click this link:" +
+      changePasswordUrl,
+    html: htmlContent,
+  });
+};
 
 export default sendForgotPasswordEmail;

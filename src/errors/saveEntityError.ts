@@ -8,6 +8,9 @@ export default function saveEntityrror(
   entity_object: any,
   error: any
 ): never {
+  if (error instanceof GraphQLError) {
+    throw error;
+  }
   logger.error(`Error saving ${entity}`, {
     resolver,
     user_id,

@@ -30,6 +30,10 @@ export default class UserAccount {
     @Column({length: 60})
     user_password: string;
 
+    @Field()
+    @Column()
+    user_is_verified: boolean;
+
     @OneToMany(() => Pornstar, (pornstar) => pornstar.user)
     pornstars: Pornstar[];
 

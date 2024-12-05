@@ -1,14 +1,21 @@
-import FormData from 'form-data';
-import Mailgun from 'mailgun.js';
+import FormData from "form-data";
+import Mailgun from "mailgun.js";
 const mailgun = new Mailgun(FormData);
-import 'dotenv/config';
+import "dotenv/config";
 
 if (!process.env.MAILGUN_API_KEY) {
-  throw new Error('MAILGUN_API_KEY environment variable is not defined');
+  throw new Error("MAILGUN_API_KEY environment variable is not defined");
 }
-const mg = mailgun.client({username: 'api', key: process.env.MAILGUN_API_KEY});
+const mg = mailgun.client({
+  username: "api",
+  key: process.env.MAILGUN_API_KEY,
+});
 
-const sendChangeEmailAddressEmail = async (username : string, email : string, changeEmailUrl : string) => {
+const sendEmailVerificationEmail = async (
+  username: string,
+  email: string,
+  confirmEmailUrl: string
+) => {
   const htmlContent = `
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 500px; margin: 0 auto; display:block; font-family: Arial, sans-serif;">
         <tr>
@@ -32,11 +39,11 @@ const sendChangeEmailAddressEmail = async (username : string, email : string, ch
                     </tr>
                     <tr>
                         <td>
-                            <p style="margin:16px 0;">We've received a request to change your email address to this email. Click on the button below to confirm:</p>
+                            <p style="margin:16px 0;">To complete your sign up, we need to verify your email address. Click on the button below to confirm:</p>
                         </td>
                     </tr>
                     <tr>
-                        <td align="center"> <a href="${changeEmailUrl}" style="
+                        <td align="center"> <a href="${confirmEmailUrl}" style="
               display: inline-block;
               padding: 10px 20px;
               background-color: rgb(24, 119, 201);
@@ -44,7 +51,7 @@ const sendChangeEmailAddressEmail = async (username : string, email : string, ch
               text-decoration: none;
               font-size: 18px;
               border-radius: 5px;
-            ">Confirm new email</a></td>
+            ">Confirm email address</a></td>
         </tr>
         <tr>
             <td>
@@ -58,14 +65,18 @@ const sendChangeEmailAddressEmail = async (username : string, email : string, ch
     </table>
 `;
 
-  await mg.messages.create('myfapsheet.com', {
-  	from: "MyFapSheet <noreply@myfapsheet.com>",
-      to: [email],
-  	//to: ["bryanyuen@myfapsheet.com"],
-  	subject: "Change email address request",
-  	text: "Hi " + username + ", we've received a request to change your email address. To proceed with changing your email address, please click this link:" + changeEmailUrl,
-  	html: htmlContent
-  })
-}
+  await mg.messages.create("myfapsheet.com", {
+    from: "MyFapSheet <noreply@myfapsheet.com>",
+    to: [email],
+    //to: ["bryanyuen@myfapsheet.com"],
+    subject: "Verify your email",
+    text:
+      "Hi " +
+      username +
+      ", to complete your sign up, we need to verify your email address. To confirm your email address, please click this link:" +
+      confirmEmailUrl,
+    html: htmlContent,
+  });
+};
 
-export default sendChangeEmailAddressEmail;
+export default sendEmailVerificationEmail;

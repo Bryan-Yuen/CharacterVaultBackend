@@ -25,15 +25,19 @@ import ChangePasswordInputType from "../inputTypes/ChangePasswordInputType";
 import ChangePasswordLoggedInInputType from "../inputTypes/ChangePasswordLoggedInInputType";
 import ChangeEmailInputType from "../inputTypes/ChangeEmailInputType";
 import ConfirmChangeEmailInputType from "../inputTypes/ConfirmChangeEmailInputType";
+import ConfirmEmailAddressInputType from "../inputTypes/ConfirmEmailAddressInputType";
+//import ResendVerificationEmailInputType from "../inputTypes/ResendVerificationEmailInputType";
 // return types
 import UserProfileReturn from "../returnTypes/UserProfileReturn";
 // middleware
 import isAuth from "../middleware/isAuth";
 import rateLimit from "../middleware/rateLimit";
+import versionChecker from "../middleware/versionChecker";
 // emails
 import sendForgotPasswordEmail from "../emails/forgotPasswordEmail";
-import sendWelcomeEmail from "../emails/welcomeEmail";
+//import sendWelcomeEmail from "../emails/welcomeEmail";
 import sendChangeEmailAddressEmail from "../emails/changeEmailAddressEmail";
+import sendEmailVerificationEmail from "../emails/emailVerificationEmail";
 // errors
 import entityNullError from "../errors/entityNullError";
 import findEntityError from "../errors/findEntityError";
@@ -75,6 +79,7 @@ export class UserResolver {
             req.session.userId
           );
         }
+
         const userLoginHistoryRepository =
           AppDataSource.getRepository(UserLoginHistory);
         user.userLoginHistory.user_last_login_date_time = new Date();
@@ -90,7 +95,9 @@ export class UserResolver {
           );
         }
 
-        return true;
+        // this user.user_is_verified is just for if user clicks on email confirm link in incognito tab and then they go back to regular browser and refresh email-verification page
+        if (req.session.verified || user.user_is_verified) return true;
+        else return false;
       } else return false;
     } catch (error) {
       findEntityError(
@@ -105,10 +112,12 @@ export class UserResolver {
 
   // registers new user
   @Mutation(() => Boolean)
-  @UseMiddleware(rateLimit(10, 60 * 60 * 24)) // max 10 requests per day per ip
+  @UseMiddleware(versionChecker)
+  //@UseMiddleware(rateLimit(10, 60 * 60 * 24)) // max 10 requests per day per ip
   async registerUser(
-    @Arg("registerUserData") {user_username, user_email, user_password}: RegisterUserInputType,
-    @Ctx() { req }: MyContext
+    @Arg("registerUserData")
+    { user_username, user_email, user_password }: RegisterUserInputType,
+    @Ctx() { req, redis }: MyContext
   ): Promise<Boolean> {
     try {
       const userRepository = AppDataSource.getRepository(UserAccount);
@@ -140,10 +149,7 @@ export class UserResolver {
       }
 
       // hash password
-      const hashedPassword = await bcrypt.hash(
-        user_password,
-        10
-      );
+      const hashedPassword = await bcrypt.hash(user_password, 10);
       const user = new UserAccount();
       user.user_username = user_username;
       user.user_email = user_email;
@@ -180,6 +186,7 @@ export class UserResolver {
         );
       }
 
+      /*
       try {
         await sendWelcomeEmail(
           user_username,
@@ -198,6 +205,39 @@ export class UserResolver {
           }
         );
       }
+        */
+      const token = uuidv4();
+
+      try {
+        await redis.set(
+          token,
+          JSON.stringify({
+            user_id: user.user_id,
+          }),
+          "EX",
+          1000 * 60 * 60 * 24 * 3
+        ); // 3 days
+
+        const changeEmailUrl = `${process.env.DEVELOPMENT_URL}/email-verified?token=${token}`;
+
+        try {
+          await sendEmailVerificationEmail(
+            user.user_username,
+            user.user_email,
+            changeEmailUrl
+          );
+        } catch (error) {
+          sendEmailError(
+            "registerUser",
+            "email verification email",
+            user_email,
+            error,
+            req.session.userId
+          );
+        }
+      } catch (error) {
+        redisError("registerUser", "SET", error, -1);
+      }
 
       return true;
     } catch (error) {
@@ -214,9 +254,10 @@ export class UserResolver {
 
   // logins current user
   @Mutation(() => Boolean)
+  @UseMiddleware(versionChecker)
   @UseMiddleware(rateLimit(20, 60 * 5)) // max 20 login attempts per 5 minutes
   async loginUser(
-    @Arg("loginUserData") {user_email, user_password}: LoginUserInputType,
+    @Arg("loginUserData") { user_email, user_password }: LoginUserInputType,
     @Ctx() { req }: MyContext
   ): Promise<Boolean> {
     try {
@@ -234,10 +275,7 @@ export class UserResolver {
         });
       }
 
-      const match = await bcrypt.compare(
-        user_password,
-        user.user_password
-      );
+      const match = await bcrypt.compare(user_password, user.user_password);
       // expected error, when user enteres incorrect password
       if (!match) {
         throw new GraphQLError("Invalid email and password combination.", {
@@ -248,6 +286,14 @@ export class UserResolver {
       } else {
         // stores id in session cookie
         req.session.userId = user.user_id;
+        if (!user.user_is_verified) {
+          throw new GraphQLError("Email is not verified.", {
+            extensions: {
+              code: "EMAIL_NOT_VERIFIED",
+            },
+          });
+        }
+        req.session.verified = true;
         return true;
       }
     } catch (error) {
@@ -263,7 +309,8 @@ export class UserResolver {
 
   // logs user out and clears session cookie
   @Mutation(() => Boolean)
-  @UseMiddleware(isAuth)
+  //@UseMiddleware(isAuth)
+  @UseMiddleware(versionChecker)
   @UseMiddleware(rateLimit(20, 60 * 5)) // max 20 requests per 5 minutes
   async logoutUser(@Ctx() { req, res }: MyContext): Promise<Boolean> {
     return new Promise((resolve) =>
@@ -280,6 +327,7 @@ export class UserResolver {
         }
         // clears cookie on client side
         res.clearCookie("fap");
+        console.log("i have cleared session logout");
         resolve(true);
       })
     );
@@ -287,9 +335,9 @@ export class UserResolver {
 
   // sends a reset password email with url and token link
   @Mutation(() => Boolean)
-  @UseMiddleware(rateLimit(10, 60 * 60 * 24)) // max 10 emails a day
+  //@UseMiddleware(rateLimit(10, 60 * 60 * 24)) // max 10 emails a day
   async forgotPassword(
-    @Arg("forgotPasswordInput") {user_email}: ForgotPasswordInputType,
+    @Arg("forgotPasswordInput") { user_email }: ForgotPasswordInputType,
     @Ctx() { redis }: MyContext
   ): Promise<Boolean> {
     try {
@@ -312,8 +360,12 @@ export class UserResolver {
         // expires in 1 hour
         await redis.set(token, user.user_id, "EX", 1000 * 60 * 60);
         try {
-          const changePasswordUrl = `http://192.168.0.208:3000/change-password?token=${token}`;
-          await sendForgotPasswordEmail(user.user_username, changePasswordUrl);
+          const changePasswordUrl = `${process.env.DEVELOPMENT_URL}/change-password?token=${token}`;
+          await sendForgotPasswordEmail(
+            user.user_username,
+            user_email,
+            changePasswordUrl
+          );
         } catch (error) {
           sendEmailError(
             "forgotPassword",
@@ -328,6 +380,9 @@ export class UserResolver {
 
       return true;
     } catch (error) {
+      if (error instanceof GraphQLError) {
+        throw error;
+      }
       logger.error("Error fetching user", {
         resolver: "forgotPassword",
         user_email: user_email,
@@ -343,7 +398,8 @@ export class UserResolver {
   @Mutation(() => Boolean)
   @UseMiddleware(rateLimit(20, 60 * 5)) // max 20 login attempts per 5 minutes
   async changePassword(
-    @Arg("changePasswordInput") {new_password, token}: ChangePasswordInputType,
+    @Arg("changePasswordInput")
+    { new_password, token }: ChangePasswordInputType,
     @Ctx() { redis }: MyContext
   ): Promise<Boolean> {
     try {
@@ -396,6 +452,7 @@ export class UserResolver {
   // gets user's username and email
   @Query(() => UserProfileReturn)
   @UseMiddleware(isAuth)
+  @UseMiddleware(versionChecker)
   @UseMiddleware(rateLimit(50, 60 * 5)) // max 50 requests per 5 minutes
   async getUserProfile(@Ctx() { req }: MyContext): Promise<UserProfileReturn> {
     try {
@@ -431,9 +488,11 @@ export class UserResolver {
   // changes user's password when they are already logged in
   @Mutation(() => Boolean)
   @UseMiddleware(isAuth)
+  @UseMiddleware(versionChecker)
   @UseMiddleware(rateLimit(25, 60 * 60)) // max 25 requests every hour
   async changePasswordLoggedIn(
-    @Arg("changePasswordLoggedInInput") {current_password, new_password} : ChangePasswordLoggedInInputType,
+    @Arg("changePasswordLoggedInInput")
+    { current_password, new_password }: ChangePasswordLoggedInInputType,
     @Ctx() { req }: MyContext
   ): Promise<Boolean> {
     try {
@@ -490,9 +549,10 @@ export class UserResolver {
   // changes the user's email when they are logged in by sending confirmation email
   @Mutation(() => Boolean)
   @UseMiddleware(isAuth)
+  @UseMiddleware(versionChecker)
   @UseMiddleware(rateLimit(10, 60 * 60 * 24)) // max 10 emails per day
   async changeEmail(
-    @Arg("changeEmailInput") {user_email}: ChangeEmailInputType,
+    @Arg("changeEmailInput") { user_email }: ChangeEmailInputType,
     @Ctx() { req, redis }: MyContext
   ): Promise<Boolean> {
     try {
@@ -508,6 +568,17 @@ export class UserResolver {
           req.session.userId
         );
       }
+      const userEmailExists = await userRepository.findOneBy({
+        user_email: user_email,
+      });
+      if (userEmailExists) {
+        throw new GraphQLError(
+          "Error. Email is already in use.",
+          {
+            extensions: { code: "EMAIL_EXISTS" },
+          }
+        );
+      }
       const token = uuidv4();
 
       try {
@@ -521,10 +592,14 @@ export class UserResolver {
           1000 * 60 * 60 * 24 * 3
         ); // 3 days
 
-        const changeEmailUrl = `http://192.168.0.208:3000/confirm-new-email?token=${token}`;
+        const changeEmailUrl = `${process.env.DEVELOPMENT_URL}/confirm-new-email?token=${token}`;
 
         try {
-          await sendChangeEmailAddressEmail(user.user_username, changeEmailUrl);
+          await sendChangeEmailAddressEmail(
+            user.user_username,
+            user_email,
+            changeEmailUrl
+          );
         } catch (error) {
           sendEmailError(
             "changeEmail",
@@ -554,7 +629,7 @@ export class UserResolver {
   @Mutation(() => Boolean)
   @UseMiddleware(rateLimit(20, 60 * 5)) // max 20 requests per 5 minutes
   async confirmChangeEmail(
-    @Arg("confirmChangeEmailInput") {token}: ConfirmChangeEmailInputType,
+    @Arg("confirmChangeEmailInput") { token }: ConfirmChangeEmailInputType,
     @Ctx() { redis }: MyContext
   ): Promise<Boolean> {
     try {
@@ -574,7 +649,7 @@ export class UserResolver {
       const user = await userRepository.findOneBy({
         user_id: userInfo.user_id,
       });
-      if (!user) {
+      if (user === null) {
         entityNullError(
           "confirmChangeEmail",
           "user",
@@ -601,6 +676,139 @@ export class UserResolver {
       return true;
     } catch (error) {
       redisError("confirmChangeEmail", "GET", error);
+    }
+  }
+
+  // confirms the email verification request and updates the database when user clicks on link with active token
+  @Mutation(() => Boolean)
+  @UseMiddleware(rateLimit(20, 60 * 5)) // max 20 requests per 5 minutes
+  async confirmEmailAddress(
+    @Arg("confirmEmailAddressInput") { token }: ConfirmEmailAddressInputType,
+    @Ctx() { req, redis }: MyContext
+  ): Promise<Boolean> {
+    try {
+      const userObj = await redis.get(token);
+      // expected error if user took too long to click on email and token expired
+      if (userObj === null) {
+        throw new GraphQLError("Token Expired.", {
+          extensions: {
+            code: "TOKEN_EXPIRED",
+          },
+        });
+      }
+
+      const userInfo = JSON.parse(userObj);
+
+      const userRepository = AppDataSource.getRepository(UserAccount);
+      const user = await userRepository.findOneBy({
+        user_id: userInfo.user_id,
+      });
+      if (user === null) {
+        entityNullError(
+          "confirmEmailAddress",
+          "user",
+          userInfo.user_id,
+          userInfo.user_id
+        );
+      }
+
+      user.user_is_verified = true;
+
+      try {
+        // these 2 executions don't depend on one another so will batch them.
+        await Promise.all([userRepository.save(user), redis.del(token)]);
+      } catch (error) {
+        saveEntityError(
+          "confirmEmailAddress",
+          "user or redis del in promise.all",
+          userInfo.user_id,
+          user,
+          error
+        );
+      }
+
+      // if they are still logged in AS SAME USER AS TOKEN, we set them as verified in session
+      if (req.session.userId === user.user_id) req.session.verified = true;
+      // else they can just log back in normally and get the verified status in session there.
+
+      return true;
+    } catch (error) {
+      redisError("confirmEmailAddress", "GET", error);
+    }
+  }
+
+  // resends the email confirmation email provided they are logged in
+  @Mutation(() => Boolean)
+  @UseMiddleware(isAuth)
+  @UseMiddleware(versionChecker)
+  @UseMiddleware(rateLimit(1, 60 * 5)) // max 1 email every 5 minutes
+  async resendVerificationEmail(
+    @Ctx() { req, redis }: MyContext
+  ): Promise<Boolean> {
+    try {
+      const userRepository = AppDataSource.getRepository(UserAccount);
+      const user = await userRepository.findOneBy({
+        user_id: req.session.userId,
+      });
+      if (user === null) {
+        entityNullError(
+          "resendVerificationEmail",
+          "user",
+          req.session.userId,
+          req.session.userId
+        );
+      }
+      // expected error if user already clicked on link in email and for some reason decideid to click resend email.
+      if (user.user_is_verified) {
+        throw new GraphQLError(
+          "User is already verified.",
+          {
+            extensions: { code: "ALREADY_VERIFIED" },
+          }
+        );
+      }
+      const token = uuidv4();
+
+      try {
+        await redis.set(
+          token,
+          JSON.stringify({
+            user_id: user.user_id,
+          }),
+          "EX",
+          1000 * 60 * 60 * 24 * 3
+        ); // 3 days
+
+        const changeEmailUrl = `${process.env.DEVELOPMENT_URL}/email-verified?token=${token}`;
+
+        try {
+          await sendEmailVerificationEmail(
+            user.user_username,
+            user.user_email,
+            changeEmailUrl
+          );
+        } catch (error) {
+          sendEmailError(
+            "registerUser",
+            "email verification email",
+            user.user_email,
+            error,
+            req.session.userId
+          );
+        }
+      } catch (error) {
+        redisError("registerUser", "SET", error, -1);
+      }
+
+      return true;
+    } catch (error) {
+      findEntityError(
+        "changeEmail",
+        "user",
+        req.session.userId,
+        req.session.userId,
+        error
+      );
     }
   }
 }
