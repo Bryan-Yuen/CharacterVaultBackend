@@ -26,7 +26,7 @@ import ChangePasswordLoggedInInputType from "../inputTypes/ChangePasswordLoggedI
 import ChangeEmailInputType from "../inputTypes/ChangeEmailInputType";
 import ConfirmChangeEmailInputType from "../inputTypes/ConfirmChangeEmailInputType";
 import ConfirmEmailAddressInputType from "../inputTypes/ConfirmEmailAddressInputType";
-//import ResendVerificationEmailInputType from "../inputTypes/ResendVerificationEmailInputType";
+import UpdateUserIsInterestedInputType from "../inputTypes/UpdateUserIsInterested";
 // return types
 import UserProfileReturn from "../returnTypes/UserProfileReturn";
 // middleware
@@ -471,6 +471,7 @@ export class UserResolver {
         return {
           user_username: user.user_username,
           user_email: user.user_email,
+          user_is_interested: user.user_is_interested
         };
       }
     } catch (error) {
@@ -572,12 +573,9 @@ export class UserResolver {
         user_email: user_email,
       });
       if (userEmailExists) {
-        throw new GraphQLError(
-          "Error. Email is already in use.",
-          {
-            extensions: { code: "EMAIL_EXISTS" },
-          }
-        );
+        throw new GraphQLError("Error. Email is already in use.", {
+          extensions: { code: "EMAIL_EXISTS" },
+        });
       }
       const token = uuidv4();
 
@@ -760,12 +758,9 @@ export class UserResolver {
       }
       // expected error if user already clicked on link in email and for some reason decideid to click resend email.
       if (user.user_is_verified) {
-        throw new GraphQLError(
-          "User is already verified.",
-          {
-            extensions: { code: "ALREADY_VERIFIED" },
-          }
-        );
+        throw new GraphQLError("User is already verified.", {
+          extensions: { code: "ALREADY_VERIFIED" },
+        });
       }
       const token = uuidv4();
 
@@ -804,6 +799,44 @@ export class UserResolver {
     } catch (error) {
       findEntityError(
         "changeEmail",
+        "user",
+        req.session.userId,
+        req.session.userId,
+        error
+      );
+    }
+  }
+
+  // updates if user is interested
+  @Mutation(() => Boolean)
+  @UseMiddleware(versionChecker)
+  @UseMiddleware(rateLimit(50, 60 * 5)) // max 50 requests per 5 minutes
+  async updateUserIsInterested(
+    @Arg("updateUserIsInterestedInput")
+    { user_is_interested }: UpdateUserIsInterestedInputType,
+    @Ctx() { req }: MyContext
+  ): Promise<Boolean> {
+    try {
+      const userRepository = AppDataSource.getRepository(UserAccount);
+      const user = await userRepository.findOneBy({
+        user_id: req.session.userId,
+      });
+      if (user === null) {
+        entityNullError(
+          "updateUserInterested",
+          "user",
+          req.session.userId,
+          req.session.userId
+        );
+      }
+      console.log("im in userinter", user_is_interested)
+
+      user.user_is_interested = user_is_interested;
+      await AppDataSource.manager.save(user);
+      return true;
+    } catch (error) {
+      findEntityError(
+        "updateUserInterested",
         "user",
         req.session.userId,
         req.session.userId,

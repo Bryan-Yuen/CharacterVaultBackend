@@ -109,6 +109,19 @@ export class PornstarResolver {
         );
       }
 
+      const pornstarNameExists = user.pornstars.some(
+        (pornstar) => pornstar.pornstar_name === pornstar_name
+      );
+
+      // expected error for pornstar name already in account
+      if (pornstarNameExists) {
+        throw new GraphQLError("Pornstar name already exists for this user.", {
+          extensions: {
+            code: "PORNSTAR_NAME_ALREADY_EXISTS",
+          },
+        });
+      }
+
       // safeguard incase user bypass add button block and add pornstar page
       if (user.pornstars.length >= 25) {
         logger.error(
@@ -265,7 +278,7 @@ export class PornstarResolver {
             user_id: req.session.userId,
           },
         },
-        relations: ["user.userTags"],
+        relations: ["user.userTags", "user.pornstars"],
       });
       // expected error if user deleted something and had another web page opened, but should be rare
       if (pornstar === null) {
@@ -284,6 +297,31 @@ export class PornstarResolver {
           req.session.userId
         );
       }
+      if (pornstar.user.pornstars === null) {
+        entityNullError(
+          "editPornstar",
+          "pornstar.user.pornstars",
+          req.session.userId,
+          req.session.userId
+        );
+      }
+
+      // only do this check if they changed the name. if no change we don't check
+      if (pornstar.pornstar_name !== pornstar_name) {
+        const pornstarNameExists = pornstar.user.pornstars.some(
+          (pornstar) => pornstar.pornstar_name === pornstar_name
+        );
+  
+        // expected error for pornstar name already in account
+        if (pornstarNameExists) {
+          throw new GraphQLError("Pornstar name already exists for this user.", {
+            extensions: {
+              code: "PORNSTAR_NAME_ALREADY_EXISTS",
+            },
+          });
+        }
+      }
+
       pornstar.pornstar_name = pornstar_name;
 
       let url = "";

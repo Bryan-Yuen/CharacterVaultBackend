@@ -14,7 +14,7 @@ export default function entityNullError(
   });
   throw new GraphQLError(`${entity} not found.`, {
     extensions: {
-      code: `${entity.toUpperCase}_NOT_FOUND`,
+      code: `${entity.toUpperCase()}_NOT_FOUND`,
     },
   });
 }
