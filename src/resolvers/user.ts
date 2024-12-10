@@ -218,7 +218,7 @@ export class UserResolver {
           1000 * 60 * 60 * 24 * 3
         ); // 3 days
 
-        const changeEmailUrl = `${process.env.DEVELOPMENT_URL}/email-verified?token=${token}`;
+        const changeEmailUrl = `${process.env.NODE_ENV === 'PRODUCTION' ? process.env.PRODUCTION_URL : process.env.DEVELOPMENT_URL}/email-verified?token=${token}`;
 
         try {
           await sendEmailVerificationEmail(
@@ -360,7 +360,7 @@ export class UserResolver {
         // expires in 1 hour
         await redis.set(token, user.user_id, "EX", 1000 * 60 * 60);
         try {
-          const changePasswordUrl = `${process.env.DEVELOPMENT_URL}/change-password?token=${token}`;
+          const changePasswordUrl = `${process.env.NODE_ENV === 'PRODUCTION' ? process.env.PRODUCTION_URL : process.env.DEVELOPMENT_URL}/change-password?token=${token}`;
           await sendForgotPasswordEmail(
             user.user_username,
             user_email,
@@ -590,7 +590,7 @@ export class UserResolver {
           1000 * 60 * 60 * 24 * 3
         ); // 3 days
 
-        const changeEmailUrl = `${process.env.DEVELOPMENT_URL}/confirm-new-email?token=${token}`;
+        const changeEmailUrl = `${process.env.NODE_ENV === 'PRODUCTION' ? process.env.PRODUCTION_URL : process.env.DEVELOPMENT_URL}/confirm-new-email?token=${token}`;
 
         try {
           await sendChangeEmailAddressEmail(
@@ -774,7 +774,7 @@ export class UserResolver {
           1000 * 60 * 60 * 24 * 3
         ); // 3 days
 
-        const changeEmailUrl = `${process.env.DEVELOPMENT_URL}/email-verified?token=${token}`;
+        const changeEmailUrl = `${process.env.NODE_ENV === 'PRODUCTION' ? process.env.PRODUCTION_URL : process.env.DEVELOPMENT_URL}/email-verified?token=${token}`;
 
         try {
           await sendEmailVerificationEmail(

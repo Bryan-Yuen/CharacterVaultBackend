@@ -25,82 +25,90 @@ if (!process.env.PRODUCTION && !process.env.DEVELOPMENT_URL) {
 }
 
 export type MyContext = {
-  req: Request & { session?: Session & { userId?: number, verified?: boolean } };
+  req: Request & {
+    session?: Session & { userId?: number; verified?: boolean };
+  };
   res: Response;
   redis: Redis;
 };
 
 const startServer = async () => {
-  await AppDataSource.initialize();
+  try {
+    await AppDataSource.initialize();
 
-  const app = express();
+    const app = express();
 
-  const redisClient = new Redis();
+    const redisClient = new Redis();
 
-  redisClient.on("error", (error) => {
-    console.error("Redis connection error:", error);
-  });
+    redisClient.on("error", (error) => {
+      console.error("Redis connection error:", error);
+    });
 
-  app.use(
-    cors({
-      // stupid typescript compile error forced me to use || "" even though i have typecheck up there and types in environment types file
-      origin: process.env.PRODUCTION ? [process.env.PRODUCTION_URL || ""] : ["http://localhost:3000", process.env.DEVELOPMENT_URL || ""],
-      credentials: true,
-    })
-  );
+    app.use(
+      cors({
+        // stupid typescript compile error forced me to use || "" even though i have typecheck up there and types in environment types file
+        origin: process.env.PRODUCTION
+          ? [process.env.PRODUCTION_URL || ""]
+          : ["http://localhost:3000", process.env.DEVELOPMENT_URL || ""],
+        credentials: true,
+      })
+    );
 
-  if (!process.env.COOKIE_SECRET) {
-    throw new Error('COOKIE_SECRET environment variable is not defined');
-  }
-  
-  app.use(
-    session({
-      name: "fap",
-      secret: process.env.COOKIE_SECRET,
-      store: new RedisStore({
-        client: redisClient,
+    if (!process.env.COOKIE_SECRET) {
+      throw new Error("COOKIE_SECRET environment variable is not defined");
+    }
+
+    app.use(
+      session({
+        name: "fap",
+        secret: process.env.COOKIE_SECRET,
+        store: new RedisStore({
+          client: redisClient,
+        }),
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+          maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
+          httpOnly: true,
+        },
+      })
+    );
+
+    const httpServer = http.createServer(app);
+
+    const server = new ApolloServer<MyContext>({
+      schema: await buildSchema({
+        resolvers: [
+          UserResolver,
+          PornstarResolver,
+          UserTagResolver,
+          ContactResolver,
+        ],
+        // you need this to be true to use class-validator decorators
+        validate: { forbidUnknownValues: false },
       }),
-      resave: false,
-      saveUninitialized: false,
-      cookie: {
-        maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
-        httpOnly: true,
-      },
-    })
-  );
+      formatError: myFormatError,
+      plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
+    });
+    await server.start();
 
-  const httpServer = http.createServer(app);
+    app.use(
+      "/",
+      // expressMiddleware accepts the same arguments:
+      // an Apollo Server instance and optional configuration options
+      express.json(),
+      //cors<cors.CorsRequest>(),
+      expressMiddleware(server, {
+        context: async ({ req, res }) => ({ req, res, redis: redisClient }),
+      })
+    );
 
-  const server = new ApolloServer<MyContext>({
-    schema: await buildSchema({
-      resolvers: [
-        UserResolver,
-        PornstarResolver,
-        UserTagResolver,
-        ContactResolver,
-      ],
-      // you need this to be true to use class-validator decorators
-      validate: { forbidUnknownValues: false },
-    }),
-    formatError: myFormatError,
-    plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
-  });
-  await server.start();
-
-  app.use(
-    "/",
-    // expressMiddleware accepts the same arguments:
-    // an Apollo Server instance and optional configuration options
-    express.json(),
-    //cors<cors.CorsRequest>(),
-    expressMiddleware(server, {
-      context: async ({ req, res }) => ({ req, res, redis: redisClient }),
-    })
-  );
-
-  await new Promise<void>((resolve) =>
-    httpServer.listen({ port: 4000 }, resolve)
-  );
-  console.log(`🚀 Server ready at http://localhost:4000/`);
+    await new Promise<void>((resolve) =>
+      httpServer.listen({ port: 4000 }, resolve)
+    );
+    console.log(`🚀 Server ready at http://localhost:4000/`);
+  } catch (error) {
+    console.log("error", error);
+  }
 };
 startServer();

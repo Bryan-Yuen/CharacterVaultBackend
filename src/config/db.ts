@@ -17,7 +17,7 @@ const AppDataSource = new DataSource({
   port: 5432,
   username: "postgres",
   password: process.env.DB_PASSWORD,
-  database: "myfaplist",
+  database: "myfapsheet",
   entities: [
     UserAccount,
     Pornstar,

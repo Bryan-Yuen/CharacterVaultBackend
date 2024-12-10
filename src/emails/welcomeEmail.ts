@@ -34,7 +34,7 @@ const sendWelcomeEmail = async (username: string, email: string) => {
                         </td>
                     </tr>
                     <tr>
-                        <td align="center"> <a href="${process.env.DEVELOPMENT_URL}/resources" style="
+                        <td align="center"> <a href="${process.env.NODE_ENV === 'PRODUCTION' ? process.env.PRODUCTION_URL : process.env.DEVELOPMENT_URL}/resources" style="
               display: inline-block;
               padding: 10px 20px;
               background-color: rgb(24, 119, 201);
