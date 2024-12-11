@@ -1,0 +1,35 @@
+name: Build Application CI
+on:
+  push:
+    branches:
+      - main
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Project
+        env:
+            DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+            COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
+            ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY_ID }}
+            SECRET_ACCESS_KEY: ${{ secrets.SECRET_ACCESS_KEY }}
+            S3_API_URL: ${{secrets.S3_API_URL}}
+            BUCKET_NAME: ${{secrets.BUCKET_NAME}}
+            MAILGUN_API_KEY: ${{secrets.MAILGUN_API_KEY}}
+            LOGGLY_TOKEN: ${{secrets.LOGGLY_TOKEN}}
+            PRODUCTION_URL: ${{secrets.PRODUCTION_URL}}
+            DEVELOPMENT_URL: ${{secrets.DEVELOPMENT_URL}}
+            NODE_ENV: ${{secrets.NODE_ENV}}
+            PORT: ${{secrets.PORT}}
+        run: npm run build

@@ -15,13 +15,15 @@ import { expressMiddleware } from "@apollo/server/express4";
 import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
 import express, { Request, Response } from "express";
 import http from "http";
+import helmet from "helmet";
 import "dotenv/config";
 
-if (process.env.PRODUCTION && !process.env.PRODUCTION_URL) {
+if (process.env.NODE_ENV === "PRODUCTION" && !process.env.PRODUCTION_URL) {
   throw new Error("production url not defined");
 }
-if (!process.env.PRODUCTION && !process.env.DEVELOPMENT_URL) {
-  throw new Error("development url not defined");
+
+if (!process.env.PORT) {
+  throw new Error("no port defined");
 }
 
 export type MyContext = {
@@ -44,12 +46,15 @@ const startServer = async () => {
       console.error("Redis connection error:", error);
     });
 
+    app.use(helmet());
+
     app.use(
       cors({
         // stupid typescript compile error forced me to use || "" even though i have typecheck up there and types in environment types file
-        origin: process.env.PRODUCTION
-          ? [process.env.PRODUCTION_URL || ""]
-          : ["http://localhost:3000", process.env.DEVELOPMENT_URL || ""],
+        origin:
+          process.env.NODE_ENV === "PRODUCTION"
+            ? [process.env.PRODUCTION_URL || ""]
+            : ["http://localhost:3000", process.env.DEVELOPMENT_URL || ""],
         credentials: true,
       })
     );
@@ -60,7 +65,7 @@ const startServer = async () => {
 
     app.use(
       session({
-        name: "fap",
+        name: "myfapsheet-session",
         secret: process.env.COOKIE_SECRET,
         store: new RedisStore({
           client: redisClient,
@@ -68,8 +73,10 @@ const startServer = async () => {
         resave: false,
         saveUninitialized: false,
         cookie: {
-          maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
+          maxAge: 1000 * 60 * 60 * 24 * 90, // 3 months in milliseconds
           httpOnly: true,
+          secure: process.env.NODE_ENV === "PRODUCTION",
+          sameSite: "strict",
         },
       })
     );
@@ -103,10 +110,12 @@ const startServer = async () => {
       })
     );
 
+    const port = process.env.PORT;
     await new Promise<void>((resolve) =>
-      httpServer.listen({ port: 4000 }, resolve)
+      httpServer.listen({ port: port }, resolve)
     );
-    console.log(`🚀 Server ready at http://localhost:4000/`);
+    console.log(`🚀 Server ready at http://localhost:${port}/`);
+    console.log("Node env is: " + process.env.NODE_ENV);
   } catch (error) {
     console.log("error", error);
   }

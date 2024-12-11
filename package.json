@@ -4,9 +4,10 @@
   "description": "",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc-watch --onSuccess \"node .\"",
+    "build": "npx tsc",
     "dev": "cd src && ts-node-dev index.ts",
-    "watch": "nodemon index.ts"
+    "watch": "nodemon index.ts",
+    "start": "node dist/src/index.js"
   },
   "keywords": [],
   "author": "",
@@ -44,6 +45,7 @@
     "express-session": "^1.17.3",
     "form-data": "^4.0.1",
     "graphql": "^16.6.0",
+    "helmet": "^8.0.0",
     "http": "^0.0.1-security",
     "ioredis": "^5.3.2",
     "mailgun.js": "^10.2.3",
