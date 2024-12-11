@@ -76,7 +76,7 @@ const startServer = async () => {
         cookie: {
           maxAge: 1000 * 60 * 60 * 24 * 90, // 3 months in milliseconds
           httpOnly: true,
-          secure: process.env.NODE_ENV === "PRODUCTION",
+          //secure: process.env.NODE_ENV === "PRODUCTION",
           sameSite: false,
         },
       })
