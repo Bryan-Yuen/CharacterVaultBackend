@@ -35,4 +35,4 @@ jobs:
           git status
           npm install
           npm run build
-          pm2 restart DevelopmentMyFapSheetBackend
+          pm2 restart DevMyFapSheetBackend
