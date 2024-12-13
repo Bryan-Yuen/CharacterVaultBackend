@@ -19,8 +19,8 @@ import helmet from "helmet";
 import "dotenv/config";
 // commit1212
 
-if (process.env.NODE_ENV === "PRODUCTION" && !process.env.PRODUCTION_URL) {
-  throw new Error("production url not defined");
+if (process.env.NODE_ENV === "PRODUCTION" && !process.env.SERVER_URL) {
+  throw new Error("server url not defined");
 }
 
 if (!process.env.PORT) {
@@ -54,7 +54,7 @@ const startServer = async () => {
         // stupid typescript compile error forced me to use || "" even though i have typecheck up there and types in environment types file
         origin:
           process.env.NODE_ENV === "PRODUCTION"
-            ? [process.env.PRODUCTION_URL || ""]
+            ? [process.env.SERVER_URL || ""]
             : ["http://localhost:3000", process.env.DEVELOPMENT_URL || ""],
         credentials: true,
       })
