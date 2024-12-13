@@ -30,7 +30,7 @@ jobs:
         key: ${{ secrets.PRIVATE_KEY }}
         port: 22
         script: |
-          cd ~/apps/DevelopmentMyFapSheetBackend
+          cd ~/apps/DevMyFapSheetBackend
           git pull
           git status
           npm install
