@@ -1,6 +1,6 @@
 # This is a basic workflow to help you get started with Actions
 
-name: Nextjs CD
+name: Nodejs CD
 
 # Controls when the action will run. 
 on:
@@ -9,6 +9,8 @@ on:
       - Build Application CI
     types:
       - completed
+    branches:
+      - development
   workflow_dispatch:  # This allows the workflow to be manually triggered
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
@@ -28,9 +30,9 @@ jobs:
         key: ${{ secrets.PRIVATE_KEY }}
         port: 22
         script: |
-          cd ~/apps/MyFapSheetBackend
+          cd ~/apps/DevelopmentMyFapSheetBackend
           git pull
           git status
           npm install
           npm run build
-          pm2 restart MyFapSheetBackend
+          pm2 restart DevelopmentMyFapSheetBackend
