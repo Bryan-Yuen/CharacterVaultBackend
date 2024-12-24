@@ -10,7 +10,7 @@ on:
     types:
       - completed
     branches:
-      - development
+      - develop
   workflow_dispatch:  # This allows the workflow to be manually triggered
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel

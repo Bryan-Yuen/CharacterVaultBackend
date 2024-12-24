@@ -27,6 +27,10 @@ if (!process.env.PORT) {
   throw new Error("no port defined");
 }
 
+if (!process.env.REDIS_PORT) {
+  throw new Error("no redis port defined");
+}
+
 export type MyContext = {
   req: Request & {
     session?: Session & { userId?: number; verified?: boolean };
@@ -41,7 +45,9 @@ const startServer = async () => {
 
     const app = express();
 
-    const redisClient = new Redis();
+    const redisClient = new Redis({
+      port: parseInt(process.env.REDIS_PORT || "6379"), // Redis port
+    });
 
     redisClient.on("error", (error) => {
       console.error("Redis connection error:", error);

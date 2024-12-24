@@ -11,13 +11,17 @@ if (!process.env.DB_PASSWORD) {
   throw new Error("DB_PASSWORD environment variable is not defined");
 }
 
+if (!process.env.DB_NAME) {
+  throw new Error("DB_NAME environment variable is not defined");
+}
+
 const AppDataSource = new DataSource({
   type: "postgres",
   host: "localhost",
   port: 5432,
   username: "postgres",
   password: process.env.DB_PASSWORD,
-  database: "myfapsheet",
+  database: process.env.DB_NAME,
   entities: [
     UserAccount,
     Pornstar,
