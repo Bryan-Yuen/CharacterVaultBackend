@@ -6,6 +6,16 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import "dotenv/config";
 
+import { createCipheriv } from "node:crypto";
+
+/*
+const {
+  scrypt,
+  randomFill,
+  createCipheriv,
+} = require('node:crypto');
+ */
+
 if (!process.env.ACCESS_KEY_ID) {
   throw new Error("ACCESS_KEY_ID environment variable is not defined");
 }
@@ -17,6 +27,12 @@ if (!process.env.S3_API_URL) {
 }
 if (!process.env.BUCKET_NAME) {
   throw new Error("BUCKET_NAME environment variable is not defined");
+}
+if(!process.env.PRESIGNED_URL_CIPHER_KEY) {
+  throw new Error("PRESIGNED_URL_CIPHER_KEY environment variable is not defined");
+}
+if(!process.env.PRESIGNED_URL_CIPHER_IV) {
+  throw new Error("PRESIGNED_URL_CIPHER_IV environment variable is not defined");
 }
 
 const accessKeyId = process.env.ACCESS_KEY_ID;
@@ -34,7 +50,7 @@ const client = new S3Client({
   endpoint: process.env.S3_API_URL,
 });
 
-export const createPresignedUrlWithClient = async ({
+export const createEncryptedPresignedUrlWithClient = async ({
   key,
 }: {
   key: string;
@@ -45,7 +61,19 @@ export const createPresignedUrlWithClient = async ({
     ContentType: "image/jpeg",
   });
 
-  return await getSignedUrl(client, command, { expiresIn: 3600 });
+  // expires in 1 minute
+  //return await getSignedUrl(client, command, { expiresIn: 60 });
+  const presignedUrl = await getSignedUrl(client, command, { expiresIn: 60 });
+
+  // Static key and IV (both stored securely)
+  const staticKey = Buffer.from(process.env.PRESIGNED_URL_CIPHER_KEY || "", "base64"); // Static key (base64-encoded)
+  const staticIv = Buffer.from(process.env.PRESIGNED_URL_CIPHER_IV || "", "base64"); // Static IV (base64-encoded)
+
+  const cipher = createCipheriv("aes-256-cbc", staticKey, staticIv);
+  let encryptedPresignedUrl = cipher.update(presignedUrl, "utf8", "base64");
+  encryptedPresignedUrl += cipher.final("base64");
+
+  return encryptedPresignedUrl;
 };
 
 export const deleteObjectWithClient = async ({ key }: { key: string }) => {

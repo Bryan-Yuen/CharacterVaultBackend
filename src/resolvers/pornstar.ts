@@ -20,7 +20,7 @@ import { GraphQLError } from "graphql";
 import AppDataSource from "../config/db";
 import logger from "../config/logger";
 import {
-  createPresignedUrlWithClient,
+  createEncryptedPresignedUrlWithClient,
   deleteObjectWithClient,
 } from "../config/s3";
 import "dotenv/config";
@@ -147,11 +147,11 @@ export class PornstarResolver {
 
       const pornstar = new Pornstar();
 
-      let url = "";
+      let secured_data = "";
       if (pornstar_picture) {
         const id = `${uuidv4()}-${req.session.userId}-${Date.now()}`;
         try {
-          url = await createPresignedUrlWithClient({ key: id });
+          secured_data = await createEncryptedPresignedUrlWithClient({ key: id });
           pornstar.pornstar_picture_path = process.env.BUCKET_URL + id;
         } catch (error) {
           r2Error(
@@ -226,8 +226,9 @@ export class PornstarResolver {
           }
 
           return {
-            s3Url: url,
+            secured_data: secured_data,
             pornstar_url_slug: savePornstar.pornstar_url_slug,
+            pornstar_picture_path: savePornstar.pornstar_picture_path
           };
         });
       } catch (error) {
@@ -324,7 +325,7 @@ export class PornstarResolver {
 
       pornstar.pornstar_name = pornstar_name;
 
-      let url = "";
+      let secured_data = "";
 
       // scenario if user presses delete and has current picture in database
       if (
@@ -360,7 +361,7 @@ export class PornstarResolver {
         // check and remove extra key after ?
         const updatedKey = objectKey.split("?")[0];
         try {
-          url = await createPresignedUrlWithClient({
+          secured_data = await createEncryptedPresignedUrlWithClient({
             key: updatedKey,
           });
         } catch (error) {
@@ -388,7 +389,7 @@ export class PornstarResolver {
       ) {
         const id = `${uuidv4()}-${req.session.userId}-${Date.now()}`;
         try {
-          url = await createPresignedUrlWithClient({ key: id });
+          secured_data = await createEncryptedPresignedUrlWithClient({ key: id });
         } catch (error) {
           r2Error(
             "editPornstar",
@@ -559,7 +560,7 @@ export class PornstarResolver {
           }
 
           return {
-            s3Url: url,
+            secured_data: secured_data,
             pornstar_picture_path: updatedPornstar.pornstar_picture_path,
           };
         });
