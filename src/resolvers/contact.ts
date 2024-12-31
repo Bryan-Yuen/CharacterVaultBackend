@@ -12,9 +12,11 @@ import AppDataSource from "../config/db";
 // emails
 import sendHomePageContactEmail from "../emails/contactFormEmail";
 import sendSupportEmail from "../emails/supportFormEmail";
+import sendFeedbackEmail from "../emails/feedbackFormEmail";
 // input types
 import ContactEmailInputType from "../inputTypes/ContactEmailInputType";
 import SupportEmailInputType from "../inputTypes/SupportEmailInputType";
+import FeedbackEmailInputType from "../inputTypes/FeedbackEmailInputType";
 // errors
 import entityNullError from "../errors/entityNullError";
 import sendEmailError from "../errors/sendEmailError";
@@ -88,6 +90,59 @@ export class ContactResolver {
     } catch (error) {
       findEntityError(
         "supportForm",
+        "user",
+        req.session.userId,
+        req.session.userId,
+        error
+      );
+    }
+  }
+
+  // feedback form for logged in users to send feedback
+  @Mutation(() => Boolean)
+  @UseMiddleware(isAuth)
+  @UseMiddleware(versionChecker)
+  //@UseMiddleware(rateLimit(5, 60 * 60)) // max 5 emails per hour
+  async feedbackForm(
+    @Arg("feedbackFormInput")
+    { form_subject, form_message }: FeedbackEmailInputType,
+    @Ctx() { req }: MyContext
+  ): Promise<Boolean> {
+    try {
+      const userRepository = AppDataSource.getRepository(UserAccount);
+      const user = await userRepository.findOneBy({
+        user_id: req.session.userId,
+      });
+      if (user === null) {
+        entityNullError(
+          "supportForm",
+          "user",
+          req.session.userId,
+          req.session.userId
+        );
+      }
+
+      try {
+        await sendFeedbackEmail(
+          user.user_email,
+          user.user_username,
+          form_subject,
+          form_message
+        );
+      } catch (error) {
+        sendEmailError(
+          "feedbackForm",
+          "feedback email",
+          user.user_username,
+          error,
+          req.session.userId
+        );
+      }
+
+      return true;
+    } catch (error) {
+      findEntityError(
+        "feedbackForm",
         "user",
         req.session.userId,
         req.session.userId,
