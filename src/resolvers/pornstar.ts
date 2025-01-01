@@ -149,7 +149,7 @@ export class PornstarResolver {
 
       let secured_data = "";
       if (pornstar_picture) {
-        const id = `${uuidv4()}-${req.session.userId}-${Date.now()}`;
+        const id = `${uuidv4()}-${req.session.userId}-${Date.now()}.jpg`;
         try {
           secured_data = await createEncryptedPresignedUrlWithClient({ key: id });
           pornstar.pornstar_picture_path = process.env.BUCKET_URL + id;
@@ -373,7 +373,7 @@ export class PornstarResolver {
           );
         }
         //pornstar.pornstar_picture_path = url.split('?')[0] + "?" + id;
-        const id = `${uuidv4()}-${req.session.userId}-${Date.now()}`;
+        const id = `${uuidv4()}-${req.session.userId}-${Date.now()}.jpg`;
         pornstar.pornstar_picture_path =
           process.env.BUCKET_URL +
           updatedKey +
@@ -387,7 +387,7 @@ export class PornstarResolver {
         !pornstar.pornstar_picture_path &&
         pornstar_picture
       ) {
-        const id = `${uuidv4()}-${req.session.userId}-${Date.now()}`;
+        const id = `${uuidv4()}-${req.session.userId}-${Date.now()}.jpg`;
         try {
           secured_data = await createEncryptedPresignedUrlWithClient({ key: id });
         } catch (error) {
