@@ -151,7 +151,9 @@ export class PornstarResolver {
       if (pornstar_picture) {
         const id = `${uuidv4()}-${req.session.userId}-${Date.now()}.jpg`;
         try {
-          secured_data = await createEncryptedPresignedUrlWithClient({ key: id });
+          secured_data = await createEncryptedPresignedUrlWithClient({
+            key: id,
+          });
           pornstar.pornstar_picture_path = process.env.BUCKET_URL + id;
         } catch (error) {
           r2Error(
@@ -187,7 +189,7 @@ export class PornstarResolver {
 
               newPornstarTags[i] = new PornstarTag();
               newPornstarTags[i].pornstar = savePornstar;
-              newPornstarTags[i].tag_text = pornstar_tags_text[i];
+              newPornstarTags[i].pornstar_tag_text = pornstar_tags_text[i];
               newPornstarTags[i].user_tag = userTag;
             }
 
@@ -228,7 +230,7 @@ export class PornstarResolver {
           return {
             secured_data: secured_data,
             pornstar_url_slug: savePornstar.pornstar_url_slug,
-            pornstar_picture_path: savePornstar.pornstar_picture_path
+            pornstar_picture_path: savePornstar.pornstar_picture_path,
           };
         });
       } catch (error) {
@@ -270,7 +272,6 @@ export class PornstarResolver {
     @Ctx() { req }: MyContext
   ): Promise<EditPornstarReturn> {
     try {
-      console.log("edit called");
       const pornstarRepository = AppDataSource.getRepository(Pornstar);
       const pornstar = await pornstarRepository.findOne({
         where: {
@@ -312,14 +313,17 @@ export class PornstarResolver {
         const pornstarNameExists = pornstar.user.pornstars.some(
           (pornstar) => pornstar.pornstar_name === pornstar_name
         );
-  
+
         // expected error for pornstar name already in account
         if (pornstarNameExists) {
-          throw new GraphQLError("Pornstar name already exists for this user.", {
-            extensions: {
-              code: "PORNSTAR_NAME_ALREADY_EXISTS",
-            },
-          });
+          throw new GraphQLError(
+            "Pornstar name already exists for this user.",
+            {
+              extensions: {
+                code: "PORNSTAR_NAME_ALREADY_EXISTS",
+              },
+            }
+          );
         }
       }
 
@@ -389,7 +393,9 @@ export class PornstarResolver {
       ) {
         const id = `${uuidv4()}-${req.session.userId}-${Date.now()}.jpg`;
         try {
-          secured_data = await createEncryptedPresignedUrlWithClient({ key: id });
+          secured_data = await createEncryptedPresignedUrlWithClient({
+            key: id,
+          });
         } catch (error) {
           r2Error(
             "editPornstar",
@@ -415,14 +421,15 @@ export class PornstarResolver {
             });
 
             const oldPornstarTagsText = oldPornstarTags.map(
-              (obj) => obj.tag_text
+              (obj) => obj.pornstar_tag_text
             );
 
             const elementsToRemove = oldPornstarTags.filter(
-              (element) => !pornstar_tags_text.includes(element.tag_text)
+              (element) =>
+                !pornstar_tags_text.includes(element.pornstar_tag_text)
             );
             const elementsToRemoveTagIds = elementsToRemove.map(
-              (obj) => obj.tag_id
+              (obj) => obj.pornstar_tag_id
             );
 
             if (elementsToRemove.length > 0) {
@@ -430,7 +437,9 @@ export class PornstarResolver {
                 .createQueryBuilder()
                 .delete()
                 .from(PornstarTag)
-                .where("tag_id IN (:...tags)", { tags: elementsToRemoveTagIds })
+                .where("pornstar_tag_id IN (:...tags)", {
+                  tags: elementsToRemoveTagIds,
+                })
                 .execute();
             }
 
@@ -450,7 +459,7 @@ export class PornstarResolver {
               }
               newPornstarTags[i] = new PornstarTag();
               newPornstarTags[i].pornstar = updatedPornstar;
-              newPornstarTags[i].tag_text = newTags[i];
+              newPornstarTags[i].pornstar_tag_text = newTags[i];
               newPornstarTags[i].user_tag = userTag;
             }
 
@@ -689,44 +698,53 @@ export class PornstarResolver {
     @Arg("getPornstarInput") { pornstar_url_slug }: GetPornstarInputType,
     @Ctx() { req }: MyContext
   ): Promise<PornstarWithTagsAndLinks> {
-    const pornstarRepository = AppDataSource.getRepository(Pornstar);
-    console.log("get pornstar has been called");
-    const pornstar = await pornstarRepository.findOne({
-      where: {
-        pornstar_url_slug: pornstar_url_slug,
-        user: {
-          user_id: req.session.userId,
+    try {
+      const pornstarRepository = AppDataSource.getRepository(Pornstar);
+      const pornstar = await pornstarRepository.findOne({
+        where: {
+          pornstar_url_slug: pornstar_url_slug,
+          user: {
+            user_id: req.session.userId,
+          },
         },
-      },
-      relations: ["pornstar_tags", "pornstar_links"],
-    });
-    // expected error if user enters wrong slug for some reason or porntsar previously deleted
-    if (pornstar === null) {
-      entityNullError(
-        "getPornstar",
-        "pornstar",
-        req.session.userId,
-        req.session.userId
-      );
-    }
-    if (pornstar.pornstar_tags === null) {
-      entityNullError(
-        "getPornstar",
-        "pornstar",
-        req.session.userId,
-        req.session.userId
-      );
-    }
-    if (pornstar.pornstar_links === null) {
-      entityNullError(
-        "getPornstar",
-        "pornstar",
-        req.session.userId,
-        req.session.userId
-      );
-    }
+        relations: ["pornstar_tags", "pornstar_links"],
+      });
+      // expected error if user enters wrong slug for some reason or porntsar previously deleted
+      if (pornstar === null) {
+        entityNullError(
+          "getPornstar",
+          "pornstar",
+          req.session.userId,
+          req.session.userId
+        );
+      }
+      if (pornstar.pornstar_tags === null) {
+        entityNullError(
+          "getPornstar",
+          "pornstar",
+          req.session.userId,
+          req.session.userId
+        );
+      }
+      if (pornstar.pornstar_links === null) {
+        entityNullError(
+          "getPornstar",
+          "pornstar",
+          req.session.userId,
+          req.session.userId
+        );
+      }
 
-    return pornstar;
+      return pornstar;
+    } catch (error) {
+      findEntityError(
+        "getPornstar",
+        "pornstar",
+        req.session.userId,
+        req.session.userId,
+        error
+      );
+    }
   }
 
   // returns pornstars and their associated pornstar tags texts in one object array.
@@ -738,43 +756,41 @@ export class PornstarResolver {
     @Ctx() { req }: MyContext
   ): Promise<PornstarWithTags[]> {
     try {
-      console.log("getallporn ha ben called");
-    
-    const userRepository = AppDataSource.getRepository(UserAccount);
-    const user = await userRepository.findOne({
-      where: {
-        user_id: req.session.userId,
-      },
-      relations: ["pornstars", "pornstars.pornstar_tags"],
-    });
-    if (user === null) {
-      entityNullError(
-        "getAllPornstarsAndTags",
-        "user",
-        req.session.userId,
-        req.session.userId
+      const userRepository = AppDataSource.getRepository(UserAccount);
+      const user = await userRepository.findOne({
+        where: {
+          user_id: req.session.userId,
+        },
+        relations: ["pornstars", "pornstars.pornstar_tags"],
+      });
+      if (user === null) {
+        entityNullError(
+          "getAllPornstarsAndTags",
+          "user",
+          req.session.userId,
+          req.session.userId
+        );
+      }
+      if (user.pornstars === null) {
+        entityNullError(
+          "getAllPornstarsAndTags",
+          "pornstars",
+          req.session.userId,
+          req.session.userId
+        );
+      }
+      const restructuredPornstars: PornstarWithTags[] = user.pornstars.map(
+        (pornstar) => ({
+          pornstar_url_slug: pornstar.pornstar_url_slug,
+          pornstar_name: pornstar.pornstar_name,
+          pornstar_picture_path: pornstar.pornstar_picture_path,
+          pornstar_tags_text: pornstar.pornstar_tags.map(
+            (pornstar_tag) => pornstar_tag.pornstar_tag_text
+          ),
+        })
       );
-    }
-    if (user.pornstars === null) {
-      entityNullError(
-        "getAllPornstarsAndTags",
-        "pornstars",
-        req.session.userId,
-        req.session.userId
-      );
-    }
-    const restructuredPornstars: PornstarWithTags[] = user.pornstars.map(
-      (pornstar) => ({
-        pornstar_url_slug: pornstar.pornstar_url_slug,
-        pornstar_name: pornstar.pornstar_name,
-        pornstar_picture_path: pornstar.pornstar_picture_path,
-        pornstar_tags_text: pornstar.pornstar_tags.map(
-          (pornstar_tag) => pornstar_tag.tag_text
-        ),
-      })
-    );
 
-    return restructuredPornstars;
+      return restructuredPornstars;
     } catch (error) {
       findEntityError(
         "getAllPornstarsAndTags",

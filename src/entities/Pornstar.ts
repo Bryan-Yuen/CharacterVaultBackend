@@ -1,6 +1,13 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, OneToMany } from "typeorm"
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+} from "typeorm";
 import { ObjectType, Field } from "type-graphql";
-import UserAccount  from "./UserAccount";
+import UserAccount from "./UserAccount";
 import PornstarTag from "./PornstarTag";
 import PornstarLink from "./PornstarLink";
 
@@ -14,31 +21,30 @@ class name by converting it to snake_case (e.g., MyEntity
 @ObjectType()
 @Entity()
 export default class Pornstar {
-    @Field()
-    @PrimaryGeneratedColumn()
-    pornstar_id: number;
+  @Field()
+  @PrimaryGeneratedColumn()
+  pornstar_id: number;
 
-    @Field()
-    @Column({length: 50})
-    pornstar_name: string;
+  @Field()
+  @Column({ length: 50 })
+  pornstar_name: string;
 
-    @Field({nullable: true})
-    @Column({length: 90, nullable: true})
-    pornstar_picture_path?: string;
+  @Field({ nullable: true })
+  @Column({ length: 90, nullable: true })
+  pornstar_picture_path?: string;
 
-    @Field()
-    @Column({length: 100})
-    pornstar_url_slug: string;
+  @Field()
+  @Column({ length: 100 })
+  pornstar_url_slug: string;
 
-    @Field(() => UserAccount)
-    @ManyToOne(() => UserAccount, user => user.pornstars)
-    @JoinColumn({ name: 'user_id' })
-    user: UserAccount;
+  @Field(() => UserAccount)
+  @ManyToOne(() => UserAccount, (user) => user.pornstars)
+  @JoinColumn({ name: "user_id" })
+  user: UserAccount;
 
-    @OneToMany(() => PornstarTag, (PornstarTag) => PornstarTag.pornstar)
-    pornstar_tags: PornstarTag[];
+  @OneToMany(() => PornstarTag, (PornstarTag) => PornstarTag.pornstar)
+  pornstar_tags: PornstarTag[];
 
-    @OneToMany(() => PornstarLink, (PornstarLink) => PornstarLink.pornstar)
-    pornstar_links: PornstarLink[];
-
+  @OneToMany(() => PornstarLink, (PornstarLink) => PornstarLink.pornstar)
+  pornstar_links: PornstarLink[];
 }

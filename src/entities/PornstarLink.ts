@@ -1,4 +1,10 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from "typeorm"
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  JoinColumn,
+} from "typeorm";
 import { ObjectType, Field } from "type-graphql";
 import Pornstar from "./Pornstar";
 
@@ -12,21 +18,20 @@ class name by converting it to snake_case (e.g., MyEntity
 @ObjectType()
 @Entity()
 export default class PornstarLink {
-    @Field()
-    @PrimaryGeneratedColumn()
-    pornstar_link_id: number;
+  @Field()
+  @PrimaryGeneratedColumn()
+  pornstar_link_id: number;
 
-    @Field({nullable: true})
-    @Column({length: 100, nullable: true})
-    pornstar_link_title?: string;
+  @Field({ nullable: true })
+  @Column({ length: 100, nullable: true })
+  pornstar_link_title?: string;
 
-    @Field({nullable: true})
-    @Column({length: 255, nullable: true})
-    pornstar_link_url?: string;
+  @Field({ nullable: true })
+  @Column({ length: 255, nullable: true })
+  pornstar_link_url?: string;
 
-
-    @Field(() => Pornstar)
-    @ManyToOne(() => Pornstar, pornstar => pornstar.pornstar_links)
-    @JoinColumn({ name: 'pornstar_id' })
-    pornstar: Pornstar;
+  @Field(() => Pornstar)
+  @ManyToOne(() => Pornstar, (pornstar) => pornstar.pornstar_links)
+  @JoinColumn({ name: "pornstar_id" })
+  pornstar: Pornstar;
 }

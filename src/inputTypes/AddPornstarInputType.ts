@@ -8,14 +8,14 @@ import Pornstar from "../entities/Pornstar";
 @InputType()
 class PornstarLinkObj {
   @Field()
-  @MaxLength(100, {
-    message: 'name is more than 90 characters',
+  @MaxLength(255, {
+    message: 'title is more than 255 characters',
   })
   pornstar_link_title: string;
 
   @Field()
   @MaxLength(255, {
-    message: 'name is more than 90 characters',
+    message: 'url is more than 255 characters',
   })
   pornstar_link_url: string;
 }

@@ -58,7 +58,6 @@ export class UserResolver {
   @UseMiddleware(rateLimit(50, 60 * 5)) // max 50 requests per 5 minutes
   async checkIfLoggedin(@Ctx() { req }: MyContext): Promise<Boolean> {
     try {
-      console.log("im in checkifloggedin", req.session.userId);
       if (req.session.userId) {
         const userRepository = AppDataSource.getRepository(UserAccount);
         const user = await userRepository.findOne({
@@ -331,7 +330,6 @@ export class UserResolver {
         }
         // clears cookie on client side
         res.clearCookie("fap");
-        console.log("i have cleared session logout");
         resolve(true);
       })
     );
@@ -833,7 +831,6 @@ export class UserResolver {
           req.session.userId
         );
       }
-      console.log("im in userinter", user_is_interested)
 
       user.user_is_interested = user_is_interested;
       await AppDataSource.manager.save(user);

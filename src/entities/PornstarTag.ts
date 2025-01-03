@@ -20,11 +20,11 @@ class name by converting it to snake_case (e.g., MyEntity
 export default class PornstarTag {
   @Field()
   @PrimaryGeneratedColumn()
-  tag_id: number;
+  pornstar_tag_id: number;
 
   @Field()
   @Column({ length: 50 })
-  tag_text: string;
+  pornstar_tag_text: string;
 
   @Field(() => Pornstar)
   @ManyToOne(() => Pornstar, (pornstar) => pornstar.pornstar_tags)
