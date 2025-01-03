@@ -29,7 +29,7 @@ const sendEmailVerificationEmail = async (
                     </tr>
                     <tr>
                         <td align="center">
-                            <h1 style="margin:16px 0; font-size:32px;">Change email address</h1>
+                            <h1 style="margin:16px 0; font-size:32px;">Verify email address</h1>
                         </td>
                     </tr>
                      <tr>

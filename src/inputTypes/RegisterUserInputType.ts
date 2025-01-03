@@ -7,8 +7,8 @@ export default class RegisterUserInputType
   implements Partial<UserAccount>
 {
   @Field()
-  @MinLength(4, {
-    message: "Username is less than 4 characters",
+  @MinLength(3, {
+    message: "Username is less than 3 characters",
   })
   @MaxLength(40, {
     message: "Username cannot be more than 40 characters",
