@@ -68,12 +68,6 @@ export class PornstarResolver {
     @Ctx() { req }: MyContext
   ): Promise<AddPornstarReturn> {
     try {
-      logger.error(`Error fetching ${"entity"}`, {
-        resolver : "resolver",
-        user_id : "user_id",
-        entity_id : "entity_id",
-        error : "error",
-      });
       const userRepository = AppDataSource.getRepository(UserAccount);
       const user = await userRepository.findOne({
         where: {
