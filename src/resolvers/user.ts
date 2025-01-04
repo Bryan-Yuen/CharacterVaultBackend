@@ -35,7 +35,7 @@ import rateLimit from "../middleware/rateLimit";
 import versionChecker from "../middleware/versionChecker";
 // emails
 import sendForgotPasswordEmail from "../emails/forgotPasswordEmail";
-//import sendWelcomeEmail from "../emails/welcomeEmail";
+import sendWelcomeEmail from "../emails/welcomeEmail";
 import sendChangeEmailAddressEmail from "../emails/changeEmailAddressEmail";
 import sendEmailVerificationEmail from "../emails/emailVerificationEmail";
 // errors
@@ -116,7 +116,7 @@ export class UserResolver {
   // registers new user
   @Mutation(() => Boolean)
   @UseMiddleware(versionChecker)
-  //@UseMiddleware(rateLimit(10, 60 * 60 * 24)) // max 10 requests per day per ip
+  @UseMiddleware(rateLimit(10, 60 * 60 * 24)) // max 10 requests per day per ip
   async registerUser(
     @Arg("registerUserData")
     { user_username, user_email, user_password }: RegisterUserInputType,
@@ -189,7 +189,6 @@ export class UserResolver {
         );
       }
 
-      /*
       try {
         await sendWelcomeEmail(
           user_username,
@@ -208,7 +207,6 @@ export class UserResolver {
           }
         );
       }
-        */
       const token = uuidv4();
 
       try {
@@ -337,7 +335,7 @@ export class UserResolver {
 
   // sends a reset password email with url and token link
   @Mutation(() => Boolean)
-  //@UseMiddleware(rateLimit(10, 60 * 60 * 24)) // max 10 emails a day
+  @UseMiddleware(rateLimit(10, 60 * 60 * 24)) // max 10 emails a day
   async forgotPassword(
     @Arg("forgotPasswordInput") { user_email }: ForgotPasswordInputType,
     @Ctx() { redis }: MyContext
@@ -398,7 +396,7 @@ export class UserResolver {
 
   // resets password using the link from email with token
   @Mutation(() => Boolean)
-  @UseMiddleware(rateLimit(20, 60 * 5)) // max 20 login attempts per 5 minutes
+  @UseMiddleware(rateLimit(20, 60 * 5)) // max 20 requests per 5 minutes
   async changePassword(
     @Arg("changePasswordInput")
     { new_password, token }: ChangePasswordInputType,

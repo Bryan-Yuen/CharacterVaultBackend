@@ -35,7 +35,6 @@ import transactionFailedError from "../errors/transactionFailedError";
 @Resolver(UserTag)
 export class UserTagResolver {
   // adds new user tag for account
-  // if we implement caching we need to return the id too.
   @Mutation(() => AddUserTagReturn)
   @UseMiddleware(isAuth)
   @UseMiddleware(versionChecker)

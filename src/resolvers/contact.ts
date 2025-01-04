@@ -6,7 +6,7 @@ import { Resolver, Mutation, Arg, Ctx, UseMiddleware } from "type-graphql";
 // middleware
 import isAuth from "../middleware/isAuth";
 import versionChecker from "../middleware/versionChecker";
-//import rateLimit from "../middleware/rateLimit";
+import rateLimit from "../middleware/rateLimit";
 // config
 import AppDataSource from "../config/db";
 // emails
@@ -27,7 +27,7 @@ export class ContactResolver {
   // contact form for when users on homepage, not logged in
   @Mutation(() => Boolean)
   @UseMiddleware(versionChecker)
-  //@UseMiddleware(rateLimit(5, 60 * 60 * 24)) // max 5 emails per person/ip address per day
+  @UseMiddleware(rateLimit(5, 60 * 60 * 24)) // max 5 emails per person/ip address per day
   async contactForm(
     @Arg("contactFormInput") { form_email, form_message }: ContactEmailInputType
   ): Promise<Boolean> {
@@ -49,7 +49,7 @@ export class ContactResolver {
   @Mutation(() => Boolean)
   @UseMiddleware(isAuth)
   @UseMiddleware(versionChecker)
-  //@UseMiddleware(rateLimit(5, 60 * 60)) // max 5 emails per hour
+  @UseMiddleware(rateLimit(5, 60 * 60)) // max 5 emails per hour
   async supportForm(
     @Arg("supportFormInput")
     { form_subject, form_message }: SupportEmailInputType,
@@ -102,7 +102,7 @@ export class ContactResolver {
   @Mutation(() => Boolean)
   @UseMiddleware(isAuth)
   @UseMiddleware(versionChecker)
-  //@UseMiddleware(rateLimit(5, 60 * 60)) // max 5 emails per hour
+  @UseMiddleware(rateLimit(5, 60 * 60)) // max 5 emails per hour
   async feedbackForm(
     @Arg("feedbackFormInput")
     { form_subject, form_message }: FeedbackEmailInputType,
@@ -115,7 +115,7 @@ export class ContactResolver {
       });
       if (user === null) {
         entityNullError(
-          "supportForm",
+          "feedbackForm",
           "user",
           req.session.userId,
           req.session.userId
