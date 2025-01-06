@@ -13,9 +13,9 @@ const sendFeedbackEmail = async (email: string, userName: string, subject: strin
   const goob = await mg.messages.create('myfapsheet.com', {
     from: `Feedback <feedback@myfapsheet.com>`, // Use your email address here
     to: ["feedback@myfapsheet.com"],
-    subject: "MyFapSheet Feedback Message From: " + userName + " " + subject,
-    text: message,
-    html: message,
+    subject: "MyFapSheet Feedback Message",
+    text: `From: ${userName}\nSubject: ${subject}\n\nMessage: ${message}`,
+    html: `From: ${userName}<br>Subject: ${subject}<br><br>Message: ${message}`,
     'h:Reply-To': `${email}` // This specifies where replies should go (user's email)
   });
   console.log(goob)

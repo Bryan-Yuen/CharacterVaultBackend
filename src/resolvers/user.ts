@@ -128,9 +128,9 @@ export class UserResolver {
         AppDataSource.getRepository(UserLoginHistory);
 
       const [userEmailExists, userUsernameExists] = await Promise.all([
-        userRepository.findOneBy({ user_email: user_email }),
+        userRepository.findOneBy({ user_email: user_email.toLowerCase() }),
         userRepository.findOneBy({
-          user_username: user_username,
+          user_username: user_username.toLowerCase(),
         }),
       ]);
 
@@ -154,8 +154,9 @@ export class UserResolver {
       // hash password
       const hashedPassword = await bcrypt.hash(user_password, 10);
       const user = new UserAccount();
+      // we let user keep the username in the case it is
       user.user_username = user_username;
-      user.user_email = user_email;
+      user.user_email = user_email.toLowerCase();
       user.user_password = hashedPassword;
 
       try {
@@ -189,24 +190,6 @@ export class UserResolver {
         );
       }
 
-      try {
-        await sendWelcomeEmail(
-          user_username,
-          user_email
-        );
-      } catch (error) {
-        // not going to throw error here because not sending email is not that important. will just log it
-        logger.error(
-          `welcome email failed to send for email: ${user_email}`,
-          {
-            resolver: "registerUser",
-            email_type: "welcome email",
-            user_id: req.session.userId,
-            email: user_email,
-            error,
-          }
-        );
-      }
       const token = uuidv4();
 
       try {
@@ -219,13 +202,13 @@ export class UserResolver {
           1000 * 60 * 60 * 24 * 3
         ); // 3 days
 
-        const changeEmailUrl = `${process.env.NODE_ENV === 'PRODUCTION' ? process.env.WEBSITE_URL : process.env.DEVELOPMENT_URL}/email-verified?token=${token}`;
+        const verificationEmailUrl = `${process.env.NODE_ENV === 'PRODUCTION' ? process.env.WEBSITE_URL : process.env.DEVELOPMENT_URL}/email-verified?token=${token}`;
 
         try {
           await sendEmailVerificationEmail(
             user.user_username,
             user.user_email,
-            changeEmailUrl
+            verificationEmailUrl
           );
         } catch (error) {
           sendEmailError(
@@ -256,7 +239,7 @@ export class UserResolver {
   // logins current user
   @Mutation(() => Boolean)
   @UseMiddleware(versionChecker)
-  @UseMiddleware(rateLimit(20, 60 * 5)) // max 20 login attempts per 5 minutes
+  @UseMiddleware(rateLimit(10, 60 * 10)) // max 10 login attempts per 10 minutes
   async loginUser(
     @Arg("loginUserData") { user_email, user_password }: LoginUserInputType,
     @Ctx() { req }: MyContext
@@ -264,7 +247,7 @@ export class UserResolver {
     try {
       const userRepository = AppDataSource.getRepository(UserAccount);
       const user = await userRepository.findOneBy({
-        user_email: user_email,
+        user_email: user_email.toLowerCase(),
       });
 
       // expected error, when user tries to log in with unregistered email
@@ -722,6 +705,25 @@ export class UserResolver {
           userInfo.user_id,
           user,
           error
+        );
+      }
+
+      try {
+        await sendWelcomeEmail(
+          user.user_username,
+          user.user_email
+        );
+      } catch (error) {
+        // not going to throw error here because not sending email is not that important. will just log it
+        logger.error(
+          `welcome email failed to send for email: ${user.user_email}`,
+          {
+            resolver: "registerUser",
+            email_type: "welcome email",
+            user_id: req.session.userId,
+            email: user.user_email,
+            error,
+          }
         );
       }
 

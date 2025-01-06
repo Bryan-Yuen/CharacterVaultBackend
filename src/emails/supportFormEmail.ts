@@ -13,9 +13,9 @@ const sendSupportEmail = async (email: string, userName: string, subject: string
   await mg.messages.create('myfapsheet.com', {
     from: `Support <support@myfapsheet.com>`, // Use your email address here
     to: ["support@myfapsheet.com"],
-    subject: "MyFapSheet Support Message From: " + userName + " " + subject,
-    text: message,
-    html: message,
+    subject: "MyFapSheet Support Message",
+    text: `From: ${userName}\nSubject: ${subject}\n\nMessage: ${message}`,
+    html: `From: ${userName}<br>Subject: ${subject}<br><br>Message: ${message}`,
     'h:Reply-To': `${email}` // This specifies where replies should go (user's email)
   });
 }
