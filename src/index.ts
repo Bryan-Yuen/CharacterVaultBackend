@@ -60,7 +60,7 @@ const startServer = async () => {
         // stupid typescript compile error forced me to use || "" even though i have typecheck up there and types in environment types file
         origin:
           process.env.NODE_ENV === "PRODUCTION"
-            ? [process.env.PRODUCTION_SERVER_URL || ""]
+            ? [process.env.WEBSITE_URL || ""]
             : ["http://localhost:3000", process.env.DEVELOPMENT_URL || ""],
         credentials: true,
       })
