@@ -19,7 +19,7 @@ import helmet from "helmet";
 import "dotenv/config";
 // commit1212
 
-if (process.env.NODE_ENV === "PRODUCTION" && !process.env.PRODUCTION_SERVER_URL) {
+if (process.env.NODE_ENV === "PRODUCTION" && !process.env.WEBSITE_URL) {
   throw new Error("server url not defined");
 }
 
@@ -54,6 +54,12 @@ const startServer = async () => {
     });
 
     app.use(helmet());
+
+    console.log("allowed origin", {origin:
+      process.env.NODE_ENV === "PRODUCTION"
+        ? [process.env.WEBSITE_URL || ""]
+        : ["http://localhost:3000", process.env.DEVELOPMENT_URL || ""],}
+    );
 
     app.use(
       cors({
