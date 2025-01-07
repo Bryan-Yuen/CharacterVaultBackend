@@ -180,7 +180,7 @@ export class UserTagResolver {
             .createQueryBuilder()
             .update(PornstarTag)
             .set({
-              porntar_tag_text: user_tag_text,
+              pornstar_tag_text: user_tag_text,
             })
             .where("user_tag_id = :user_tag_id", {
               user_tag_id: user_tag_id,
