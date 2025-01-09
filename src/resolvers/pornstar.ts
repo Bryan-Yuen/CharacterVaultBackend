@@ -352,13 +352,13 @@ export class PornstarResolver {
         //in the future lets try to get this to be able to be null so our database is only null or picture string url;
         pornstar.pornstar_picture_path = "";
       }
-      // this works but the user has to update the cache.
       // scenario if user wants to update picture and had a picture before
       else if (
         pornstar.pornstar_picture_path &&
         imageUpdate.didChange &&
         pornstar_picture
       ) {
+        /*
         const parts = pornstar.pornstar_picture_path.split("/");
         const objectKey = parts[parts.length - 1];
 
@@ -384,6 +384,26 @@ export class PornstarResolver {
           // adds a query to refresh cache
           "?" +
           id;
+          */
+        const parts = pornstar.pornstar_picture_path.split("/");
+        const objectKey = parts[parts.length - 1];
+        const id = `${uuidv4()}-${req.session.userId}-${Date.now()}.jpg`;
+        try {
+          await Promise.all([
+            (secured_data = await createEncryptedPresignedUrlWithClient({
+              key: id,
+            })),
+            await deleteObjectWithClient({ key: objectKey }),
+          ]);
+        } catch (error) {
+          r2Error(
+            "editPornstar",
+            "createPresignedUrlWithClient or deleteObjectWithClient",
+            req.session.userId,
+            error
+          );
+        }
+        pornstar.pornstar_picture_path = process.env.BUCKET_URL + id;
       }
       // if user is adding picture for first time
       else if (
