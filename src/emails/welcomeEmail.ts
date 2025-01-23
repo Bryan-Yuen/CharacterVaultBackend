@@ -30,7 +30,7 @@ const sendWelcomeEmail = async (username: string, email: string) => {
                     </tr>
                     <tr>
                         <td>
-                            <p style="margin:16px 0;">Thank you for signing up. We're glad to have you on board. Check out our resources page to get started:</p>
+                            <p style="margin:16px 0;">Thank you for signing up. Get ready to create your spicy fap sheet. Check out the drag and drop picture upload tutorial on our resources page for easy picture uploads.</p>
                         </td>
                     </tr>
                     <tr>
@@ -46,15 +46,16 @@ const sendWelcomeEmail = async (username: string, email: string) => {
         </tr>
         <tr>
             <td>
-                <p style="margin:16px 0;">Enjoy and create your awesome fap sheet. Please don't hesistate to contact us for any questions.</p>
+                <p style="margin:16px 0;">Enjoy and thanks for using our service. Please don't hesitate to contact us for any questions.</p>
             </td>
         </tr>
+        <tr><td><p style="margin:0px 0">Regards,</p></td></tr>
+        <tr><td><p style="margin:16px 0">MyFapSheet</p></td></tr>
         </table>
         </td>
         </tr>
     </table>
 `;
-
   await mg.messages.create("myfapsheet.com", {
     from: "MyFapSheet <noreply@myfapsheet.com>",
     to: [email],
