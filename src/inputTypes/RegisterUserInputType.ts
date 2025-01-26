@@ -35,4 +35,41 @@ export default class RegisterUserInputType
     message: "Password cannot be more than 64 characters",
   })
   user_password: string;
+
+  // twinred tracking stuff
+  @Field({ nullable: true })
+  @MaxLength(64, {
+    message: "Parameter value is more than 64 characters",
+  })
+  campaign_id?: string;
+
+  @Field({ nullable: true })
+  @MaxLength(64, {
+    message: "Parameter value is more than 64 characters",
+  })
+  placement_id?: string;
+
+  @Field({ nullable: true })
+  @MaxLength(64, {
+    message: "Parameter value is more than 64 characters",
+  })
+  site_id?: string;
+
+  @Field({ nullable: true })
+  @MaxLength(64, {
+    message: "Parameter value is more than 64 characters",
+  })
+  city?: string;
+
+  @Field({ nullable: true })
+  @MaxLength(64, {
+    message: "Parameter value is more than 64 characters",
+  })
+  operating_system?: string;
+
+  @Field({ nullable: true })
+  @MaxLength(128, {
+    message: "Parameter value is more than 128 characters",
+  })
+  site_name?: string;
 }

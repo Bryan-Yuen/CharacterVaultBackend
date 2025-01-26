@@ -5,6 +5,7 @@ import PornstarTag from "../entities/PornstarTag";
 import UserTag from "../entities/UserTag";
 import PornstarLink from "../entities/PornstarLink";
 import UserLoginHistory from "../entities/UserLoginHistory";
+import UserTwinredConversionInformation from "../entities/UserTwinredConversionInformation";
 import "dotenv/config";
 
 if (!process.env.DB_PASSWORD) {
@@ -29,6 +30,7 @@ const AppDataSource = new DataSource({
     UserTag,
     PornstarLink,
     UserLoginHistory,
+    UserTwinredConversionInformation
   ],
   // use this to check database is following hte rules and strucutre, use only in development do not use in prodution
   //synchronize: true,

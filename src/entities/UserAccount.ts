@@ -3,6 +3,7 @@ import { ObjectType, Field } from "type-graphql";
 import Pornstar  from "./Pornstar";
 import UserTag  from "./UserTag";
 import UserLoginHistory from "./UserLoginHistory";
+import UserTwinredConversionInformation from "./UserTwinredConversionInformation";
 
 /*
 If you don't specify a table name using the @Entity() 
@@ -41,8 +42,11 @@ export default class UserAccount {
     @OneToMany(() => Pornstar, (pornstar) => pornstar.user)
     pornstars: Pornstar[];
 
-    @OneToOne(() => UserLoginHistory, (paymentProfile) => paymentProfile.user)
+    @OneToOne(() => UserLoginHistory, (userLoginHistory) => userLoginHistory.user)
     userLoginHistory: UserLoginHistory;
+
+    @OneToOne(() => UserTwinredConversionInformation, (userTwinredConversionInformation) => userTwinredConversionInformation.user)
+    userTwinredConversionInformation: UserTwinredConversionInformation;
 
     @OneToMany(() => UserTag, (userTag) => userTag.user)
     userTags: UserTag[];
