@@ -183,8 +183,6 @@ export class UserResolver {
           );
         }
 
-        console.log("what is registertype",RegisterUserInputType)
-
         const userTwinredConversionInformation = new UserTwinredConversionInformation();
           userTwinredConversionInformation.campaign_id = campaign_id;
           userTwinredConversionInformation.placement_id = placement_id;
