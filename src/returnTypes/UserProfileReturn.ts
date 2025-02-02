@@ -11,4 +11,7 @@ export default class UserProfileReturn implements Partial<UserAccount> {
 
   @Field()
   user_is_interested: boolean;
+
+  @Field()
+  user_is_premium: boolean;
 }

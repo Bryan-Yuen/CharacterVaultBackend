@@ -478,7 +478,8 @@ export class UserResolver {
         return {
           user_username: user.user_username,
           user_email: user.user_email,
-          user_is_interested: user.user_is_interested
+          user_is_interested: user.user_is_interested,
+          user_is_premium: user.user_is_premium
         };
       }
     } catch (error) {

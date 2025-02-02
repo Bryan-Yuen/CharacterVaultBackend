@@ -39,6 +39,10 @@ export default class UserAccount {
     @Column()
     user_is_interested: boolean;
 
+    @Field()
+    @Column()
+    user_is_premium: boolean;
+
     @OneToMany(() => Pornstar, (pornstar) => pornstar.user)
     pornstars: Pornstar[];
 

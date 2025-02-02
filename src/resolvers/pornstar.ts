@@ -122,6 +122,7 @@ export class PornstarResolver {
         });
       }
 
+      /*
       // safeguard incase user bypass add button block and add pornstar page
       if (user.pornstars.length >= 25) {
         logger.error(
@@ -132,6 +133,23 @@ export class PornstarResolver {
           }
         );
         throw new GraphQLError("Max limit of 25 pornstars reached.", {
+          extensions: {
+            code: "PORNSTAR_LIMIT_REACHED",
+          },
+        });
+      }
+        */
+
+      /* this code if after closure of business*/
+      if ((user.pornstars.length >= 25 && !user.user_is_premium) || (user.pornstars.length >= 1000) ) {
+        logger.error(
+          `Unexpected user bypassed client side validation and reached add pornstar limit check`,
+          {
+            resolver: "addPornstar",
+            user_id: req.session.userId,
+          }
+        );
+        throw new GraphQLError("Max limit of 25 pornstars reached for free user or over 1000 for premium.", {
           extensions: {
             code: "PORNSTAR_LIMIT_REACHED",
           },
