@@ -22,6 +22,7 @@ import EditUserTagInputType from "../inputTypes/EditUserTagInputType";
 // return types
 import AddUserTagReturn from "../returnTypes/AddUserTagReturn";
 import EditUserTagReturn from "../returnTypes/EditUserTagReturn";
+import UserTagsWithPornstarTagsReturn from "../returnTypes/UserTagsWithPornstarTagsReturn";
 // middleware
 import isAuth from "../middleware/isAuth";
 import rateLimit from "../middleware/rateLimit";
@@ -278,11 +279,11 @@ export class UserTagResolver {
   }
 
   // returns all usertags for an account
-  @Query(() => [UserTag])
+  @Query(() => [UserTagsWithPornstarTagsReturn])
   @UseMiddleware(isAuth)
   @UseMiddleware(versionChecker)
   @UseMiddleware(rateLimit(50, 60 * 5)) // max 50 requests per 5 minutes
-  async getUserTags(@Ctx() { req }: MyContext): Promise<UserTag[]> {
+  async getUserTags(@Ctx() { req }: MyContext): Promise<UserTagsWithPornstarTagsReturn[]> {
     try {
       const userRepository = AppDataSource.getRepository(UserAccount);
 
@@ -290,7 +291,7 @@ export class UserTagResolver {
         where: {
           user_id: req.session.userId,
         },
-        relations: ["userTags"],
+        relations: ["userTags","userTags.pornstar_tags"],
       });
       if (user === null)
         entityNullError(
@@ -306,6 +307,13 @@ export class UserTagResolver {
           req.session.userId,
           req.session.userId
         );
+        console.log(user.userTags)
+        /*
+        for (var i = 0; i < user.userTags.length; i++)
+        {
+          console.log(user.userTags[i].pornstar_tags)
+        }
+          */
       return user.userTags;
     } catch (error) {
       findEntityError(
