@@ -8,7 +8,7 @@ import {
 } from "typeorm";
 import { ObjectType, Field } from "type-graphql";
 import UserAccount from "./UserAccount";
-import PornstarTag from "./PornstarTag";
+import ActorTag from "./ActorTag";
 
 /*
 If you don't specify a table name using the @Entity() 
@@ -33,8 +33,8 @@ export default class UserTag {
   @JoinColumn({ name: "user_id" })
   user: UserAccount;
 
-  @OneToMany(() => PornstarTag, (PornstarTag) => PornstarTag.user_tag, {
+  @OneToMany(() => ActorTag, (actorTag) => actorTag.user_tag, {
     cascade: true,
   })
-  pornstar_tags: PornstarTag[];
+  actor_tags: ActorTag[];
 }

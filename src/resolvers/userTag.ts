@@ -1,7 +1,7 @@
 // entities
 import UserAccount from "../entities/UserAccount";
 import UserTag from "../entities/UserTag";
-import PornstarTag from "../entities/PornstarTag";
+import ActorTag from "../entities/ActorTag";
 import { MyContext } from "../index";
 // dependencies
 import {
@@ -22,7 +22,7 @@ import EditUserTagInputType from "../inputTypes/EditUserTagInputType";
 // return types
 import AddUserTagReturn from "../returnTypes/AddUserTagReturn";
 import EditUserTagReturn from "../returnTypes/EditUserTagReturn";
-import UserTagsWithPornstarTagsReturn from "../returnTypes/UserTagsWithPornstarTagsReturn";
+import UserTagsWithActorTagsReturn from "../returnTypes/UserTagsWithActorTagsReturn";
 // middleware
 import isAuth from "../middleware/isAuth";
 import rateLimit from "../middleware/rateLimit";
@@ -112,7 +112,7 @@ export class UserTagResolver {
     }
   }
 
-  // edits user tag for account, will also change for all pornstars tags using this user tag
+  // edits user tag for account, will also change for all actors tags using this user tag
   @Mutation(() => EditUserTagReturn)
   @UseMiddleware(isAuth)
   @UseMiddleware(versionChecker)
@@ -176,12 +176,12 @@ export class UserTagResolver {
         return await AppDataSource.transaction(async (transactionManager) => {
           const saveUserTag = await transactionManager.save(userTag);
 
-          // Update PornstarTag
+          // Update actorTag
           await transactionManager
             .createQueryBuilder()
-            .update(PornstarTag)
+            .update(ActorTag)
             .set({
-              pornstar_tag_text: user_tag_text,
+              actor_tag_text: user_tag_text,
             })
             .where("user_tag_id = :user_tag_id", {
               user_tag_id: user_tag_id,
@@ -214,7 +214,7 @@ export class UserTagResolver {
     }
   }
 
-  // deletes user tag for account, will also delete in all pornstar tags using this tag
+  // deletes user tag for account, will also delete in all actor tags using this tag
   @Mutation(() => Boolean)
   @UseMiddleware(isAuth)
   @UseMiddleware(versionChecker)
@@ -249,7 +249,7 @@ export class UserTagResolver {
           await transactionManager
             .createQueryBuilder()
             .delete()
-            .from(PornstarTag)
+            .from(ActorTag)
             .where("user_tag_id = :user_tag_id", { user_tag_id: user_tag_id })
             .execute();
 
@@ -279,11 +279,11 @@ export class UserTagResolver {
   }
 
   // returns all usertags for an account
-  @Query(() => [UserTagsWithPornstarTagsReturn])
+  @Query(() => [UserTagsWithActorTagsReturn])
   @UseMiddleware(isAuth)
   @UseMiddleware(versionChecker)
   @UseMiddleware(rateLimit(50, 60 * 5)) // max 50 requests per 5 minutes
-  async getUserTags(@Ctx() { req }: MyContext): Promise<UserTagsWithPornstarTagsReturn[]> {
+  async getUserTags(@Ctx() { req }: MyContext): Promise<UserTagsWithActorTagsReturn[]> {
     try {
       const userRepository = AppDataSource.getRepository(UserAccount);
 
@@ -291,7 +291,7 @@ export class UserTagResolver {
         where: {
           user_id: req.session.userId,
         },
-        relations: ["userTags","userTags.pornstar_tags"],
+        relations: ["userTags","userTags.actor_tags"],
       });
       if (user === null)
         entityNullError(
@@ -311,7 +311,7 @@ export class UserTagResolver {
         /*
         for (var i = 0; i < user.userTags.length; i++)
         {
-          console.log(user.userTags[i].pornstar_tags)
+          console.log(user.userTags[i].actor_tags)
         }
           */
       return user.userTags;

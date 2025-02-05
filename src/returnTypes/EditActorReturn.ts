@@ -1,12 +1,12 @@
 import { ObjectType, Field } from "type-graphql";
 
 @ObjectType()
-export default class EditPornstarReturn{
+export default class EditActorReturn{
     // considering doing a return string or null but will do empty string
     // encrypted s3 url
     @Field()
     secured_data: string
 
     @Field({nullable: true})
-    pornstar_picture_path?: string
+    actor_picture_path?: string
 }

@@ -1,6 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, OneToMany, OneToOne} from "typeorm"
 import { ObjectType, Field } from "type-graphql";
-import Pornstar  from "./Pornstar";
+import Actor  from "./Actor";
 import UserTag  from "./UserTag";
 import UserLoginHistory from "./UserLoginHistory";
 import UserTwinredConversionInformation from "./UserTwinredConversionInformation";
@@ -43,8 +43,8 @@ export default class UserAccount {
     @Column()
     user_is_premium: boolean;
 
-    @OneToMany(() => Pornstar, (pornstar) => pornstar.user)
-    pornstars: Pornstar[];
+    @OneToMany(() => Actor, (actor) => actor.user)
+    actors: Actor[];
 
     @OneToOne(() => UserLoginHistory, (userLoginHistory) => userLoginHistory.user)
     userLoginHistory: UserLoginHistory;

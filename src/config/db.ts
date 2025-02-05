@@ -1,9 +1,9 @@
 import { DataSource } from "typeorm";
 import UserAccount from "../entities/UserAccount";
-import Pornstar from "../entities/Pornstar";
-import PornstarTag from "../entities/PornstarTag";
+import Actor from "../entities/Actor";
+import ActorTag from "../entities/ActorTag";
 import UserTag from "../entities/UserTag";
-import PornstarLink from "../entities/PornstarLink";
+import ActorLink from "../entities/ActorLink";
 import UserLoginHistory from "../entities/UserLoginHistory";
 import UserTwinredConversionInformation from "../entities/UserTwinredConversionInformation";
 import "dotenv/config";
@@ -25,10 +25,10 @@ const AppDataSource = new DataSource({
   database: process.env.DB_NAME,
   entities: [
     UserAccount,
-    Pornstar,
-    PornstarTag,
+    Actor,
+    ActorTag,
     UserTag,
-    PornstarLink,
+    ActorLink,
     UserLoginHistory,
     UserTwinredConversionInformation
   ],

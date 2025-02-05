@@ -8,8 +8,8 @@ import {
 } from "typeorm";
 import { ObjectType, Field } from "type-graphql";
 import UserAccount from "./UserAccount";
-import PornstarTag from "./PornstarTag";
-import PornstarLink from "./PornstarLink";
+import ActorTag from "./ActorTag";
+import ActorLink from "./ActorLink";
 
 /*
 If you don't specify a table name using the @Entity() 
@@ -20,31 +20,31 @@ class name by converting it to snake_case (e.g., MyEntity
   */
 @ObjectType()
 @Entity()
-export default class Pornstar {
+export default class Actor {
   @Field()
   @PrimaryGeneratedColumn()
-  pornstar_id: number;
+  actor_id: number;
 
   @Field()
   @Column({ length: 50 })
-  pornstar_name: string;
+  actor_name: string;
 
   @Field({ nullable: true })
   @Column({ length: 90, nullable: true })
-  pornstar_picture_path?: string;
+  actor_picture_path?: string;
 
   @Field()
   @Column({ length: 100 })
-  pornstar_url_slug: string;
+  actor_url_slug: string;
 
   @Field(() => UserAccount)
-  @ManyToOne(() => UserAccount, (user) => user.pornstars)
+  @ManyToOne(() => UserAccount, (user) => user.actors)
   @JoinColumn({ name: "user_id" })
   user: UserAccount;
 
-  @OneToMany(() => PornstarTag, (PornstarTag) => PornstarTag.pornstar)
-  pornstar_tags: PornstarTag[];
+  @OneToMany(() => ActorTag, (actorTag) => actorTag.actor)
+  actor_tags: ActorTag[];
 
-  @OneToMany(() => PornstarLink, (PornstarLink) => PornstarLink.pornstar)
-  pornstar_links: PornstarLink[];
+  @OneToMany(() => ActorLink, (actorLink) => actorLink.actor)
+  actor_links: ActorLink[];
 }

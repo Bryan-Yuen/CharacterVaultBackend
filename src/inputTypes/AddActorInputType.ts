@@ -3,25 +3,25 @@ import {
   Field
 } from "type-graphql";
 import { MinLength, MaxLength } from "class-validator";
-import Pornstar from "../entities/Pornstar";
+import Actor from "../entities/Actor";
 
 @InputType()
-class PornstarLinkObj {
+class ActorLinkObj {
   @Field()
   @MaxLength(255, {
     message: 'title is more than 255 characters',
   })
-  pornstar_link_title: string;
+  actor_link_title: string;
 
   @Field()
   @MaxLength(255, {
     message: 'url is more than 255 characters',
   })
-  pornstar_link_url: string;
+  actor_link_url: string;
 }
 
-@InputType({ description: "new pornstar data" })
-export default class AddPornstarInputType implements Partial<Pornstar>{
+@InputType({ description: "new actor data" })
+export default class AddActorInputType implements Partial<Actor>{
   @Field()
   @MinLength(1, {
     message: 'Name cannot be blank',
@@ -29,21 +29,21 @@ export default class AddPornstarInputType implements Partial<Pornstar>{
   @MaxLength(50, {
     message: 'Name cannot be more than 50 characters',
   })
-  pornstar_name: string;
+  actor_name: string;
 
   // true means they want to upload a picture, false means they have no picture
   @Field()
-  pornstar_picture: boolean;
+  actor_picture: boolean;
 
  
   @Field(() => [String])
-  pornstar_tags_text?: string[];
+  actor_tags_text?: string[];
 
  /*
-  @Field(() => [ModifiedPornstarTag])
-  pornstar_tags_obj?: ModifiedPornstarTag[];
+  @Field(() => [ModifiedactorTag])
+  actor_tags_obj?: ModifiedactorTag[];
   */
 
-  @Field(() => [PornstarLinkObj])
-  pornstar_links_title_url?: PornstarLinkObj[];
+  @Field(() => [ActorLinkObj])
+  actor_links_title_url?: ActorLinkObj[];
 }

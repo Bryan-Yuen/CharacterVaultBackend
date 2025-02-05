@@ -1,12 +1,12 @@
 import { ObjectType, Field } from "type-graphql";
 
 @ObjectType()
-export default class PornstarWithTags {
+export default class ActorWithTags {
   @Field()
-    pornstar_url_slug: string;
+    actor_url_slug: string;
 
     @Field()
-    pornstar_name: string;
+    actor_name: string;
 
     /*
     @Field({nullable: true})
@@ -14,8 +14,8 @@ export default class PornstarWithTags {
     pornstar_picture_path: string | null;
     */
     @Field({nullable: true})
-    pornstar_picture_path?: string;
+    actor_picture_path?: string;
 
     @Field(() => [String])
-    pornstar_tags_text: string[];
+    actor_tags_text: string[];
 }

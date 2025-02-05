@@ -30,7 +30,7 @@ const sendWelcomeEmail = async (username: string, email: string) => {
                     </tr>
                     <tr>
                         <td>
-                            <p style="margin:16px 0;">Thank you for signing up. Get ready to create your spicy fap sheet. Check out the drag and drop picture upload tutorial on our resources page for easy picture uploads.</p>
+                            <p style="margin:16px 0;">Thank you for signing up. Get ready to create your awesome actor list. Check out the drag and drop picture upload tutorial on our resources page for easy picture uploads.</p>
                         </td>
                     </tr>
                     <tr>

@@ -1,7 +1,7 @@
 import { ApolloServer } from "@apollo/server";
 import { buildSchema } from "type-graphql";
 import { UserResolver } from "./resolvers/user";
-import { PornstarResolver } from "./resolvers/pornstar";
+import { ActorResolver } from "./resolvers/actor";
 import { UserTagResolver } from "./resolvers/userTag";
 import { ContactResolver } from "./resolvers/contact";
 import "reflect-metadata";
@@ -101,7 +101,7 @@ const startServer = async () => {
       schema: await buildSchema({
         resolvers: [
           UserResolver,
-          PornstarResolver,
+          ActorResolver,
           UserTagResolver,
           ContactResolver,
         ],

@@ -6,8 +6,8 @@ import {
   JoinColumn,
 } from "typeorm";
 import { ObjectType, Field } from "type-graphql";
-import Pornstar from "./Pornstar";
-
+import Actor from "./Actor";
+import UserTag from "./UserTag";
 /*
 If you don't specify a table name using the @Entity() 
 decorator or other configuration options, TypeORM will 
@@ -17,21 +17,22 @@ class name by converting it to snake_case (e.g., MyEntity
   */
 @ObjectType()
 @Entity()
-export default class PornstarLink {
+export default class ActorTag {
   @Field()
   @PrimaryGeneratedColumn()
-  pornstar_link_id: number;
+  actor_tag_id: number;
 
-  @Field({ nullable: true })
-  @Column({ length: 100, nullable: true })
-  pornstar_link_title?: string;
+  @Field()
+  @Column({ length: 50 })
+  actor_tag_text: string;
 
-  @Field({ nullable: true })
-  @Column({ length: 255, nullable: true })
-  pornstar_link_url?: string;
+  @Field(() => Actor)
+  @ManyToOne(() => Actor, (actor) => actor.actor_tags)
+  @JoinColumn({ name: "actor_id" })
+  actor: Actor;
 
-  @Field(() => Pornstar)
-  @ManyToOne(() => Pornstar, (pornstar) => pornstar.pornstar_links)
-  @JoinColumn({ name: "pornstar_id" })
-  pornstar: Pornstar;
+  @Field(() => UserTag)
+  @ManyToOne(() => UserTag, (user_tag) => user_tag.actor_tags)
+  @JoinColumn({ name: "user_tag_id" })
+  user_tag: UserTag;
 }
