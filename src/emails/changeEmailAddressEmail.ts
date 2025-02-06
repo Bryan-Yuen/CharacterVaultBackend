@@ -16,8 +16,8 @@ const sendChangeEmailAddressEmail = async (username : string, email : string, ch
                 <table width="100%" cellspacing="0" cellpadding="0">
                     <tr>
                         <td style="display: flex; align-items: center;">
-                            <img src="https://email-pictures.myfapsheet.com/MyFapSheetLogo.png" width="26" alt="Logo" />
-                            <span style="font-weight: 600; font-size: 22px; margin-left: 10px;">MyFapSheet</span>
+                            <img src="https://charactervault-email-pictures.charactervault.site/action-icon.svg" width="26" alt="Logo" />
+                            <span style="font-weight: 600; font-size: 22px; margin-left: 10px;">Character Vault</span>
                         </td>
                     </tr>
                     <tr>
@@ -58,8 +58,8 @@ const sendChangeEmailAddressEmail = async (username : string, email : string, ch
     </table>
 `;
 
-  await mg.messages.create('myfapsheet.com', {
-  	from: "MyFapSheet <noreply@myfapsheet.com>",
+  await mg.messages.create('charactervault.site', {
+  	from: "CharacterVault <noreply@charactervault.site>",
       to: [email],
   	//to: ["bryanyuen@myfapsheet.com"],
   	subject: "Change email address request",
