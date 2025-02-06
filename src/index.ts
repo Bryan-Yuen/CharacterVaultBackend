@@ -78,7 +78,7 @@ const startServer = async () => {
 
     app.use(
       session({
-        name: "myfapsheet-session",
+        name: "charactervault-session",
         secret: process.env.COOKIE_SECRET,
         store: new RedisStore({
           client: redisClient,
@@ -89,8 +89,8 @@ const startServer = async () => {
         cookie: {
           maxAge: 1000 * 60 * 60 * 24 * 90, // 3 months in milliseconds
           httpOnly: true,
-          secure: process.env.NODE_ENV === "PRODUCTION",
-          sameSite: 'strict',
+          //secure: process.env.NODE_ENV === "PRODUCTION",
+          //sameSite: 'strict',
         },
       })
     );
