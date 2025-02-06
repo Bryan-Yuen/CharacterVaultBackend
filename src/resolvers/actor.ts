@@ -58,7 +58,7 @@ export class ActorResolver {
   @UseMiddleware(isAuth)
   @UseMiddleware(versionChecker)
   @UseMiddleware(rateLimit(50, 60 * 5)) // max 50 requests per 5 minutes
-  async addactor(
+  async addActor(
     @Arg("addActorInput")
     {
       actor_name,
