@@ -307,13 +307,6 @@ export class UserTagResolver {
           req.session.userId,
           req.session.userId
         );
-        console.log(user.userTags)
-        /*
-        for (var i = 0; i < user.userTags.length; i++)
-        {
-          console.log(user.userTags[i].actor_tags)
-        }
-          */
       return user.userTags;
     } catch (error) {
       findEntityError(
