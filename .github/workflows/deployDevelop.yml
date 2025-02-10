@@ -30,9 +30,9 @@ jobs:
         key: ${{ secrets.PRIVATE_KEY }}
         port: 22
         script: |
-          cd ~/apps/DevMyFapSheetBackend
+          cd ~/apps/CharacterVaultBackend
           git pull
           git status
           npm install
           npm run build
-          pm2 restart DevMyFapSheetBackend
+          pm2 restart CharacterVaultBackend
