@@ -5,7 +5,6 @@ import ActorTag from "../entities/ActorTag";
 import UserTag from "../entities/UserTag";
 import ActorLink from "../entities/ActorLink";
 import UserLoginHistory from "../entities/UserLoginHistory";
-import UserTwinredConversionInformation from "../entities/UserTwinredConversionInformation";
 import "dotenv/config";
 
 if (!process.env.DB_PASSWORD) {
@@ -30,7 +29,6 @@ const AppDataSource = new DataSource({
     UserTag,
     ActorLink,
     UserLoginHistory,
-    UserTwinredConversionInformation
   ],
   // use this to check database is following hte rules and strucutre, use only in development do not use in prodution
   //synchronize: true,

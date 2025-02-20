@@ -1,7 +1,6 @@
 // entities
 import UserAccount from "../entities/UserAccount";
 import UserLoginHistory from "../entities/UserLoginHistory";
-import UserTwinredConversionInformation from "../entities/UserTwinredConversionInformation";
 import { MyContext } from "../index";
 // dependencies
 import {
@@ -120,14 +119,13 @@ export class UserResolver {
   @UseMiddleware(rateLimit(10, 60 * 60 * 24)) // max 10 requests per day per ip
   async registerUser(
     @Arg("registerUserData")
-    { user_username, user_email, user_password, campaign_id, placement_id, site_id, city, operating_system, site_name }: RegisterUserInputType,
+    { user_username, user_email, user_password }: RegisterUserInputType,
     @Ctx() { req, redis }: MyContext
   ): Promise<Boolean> {
     try {
       const userRepository = AppDataSource.getRepository(UserAccount);
       const userLoginHistoryRepository =
         AppDataSource.getRepository(UserLoginHistory);
-      const userTwinredConversionInformationRepository = AppDataSource.getRepository(UserTwinredConversionInformation)
 
       const [userEmailExists, userUsernameExists] = await Promise.all([
         userRepository.findOneBy({ user_email: user_email.toLowerCase() }),
@@ -179,27 +177,6 @@ export class UserResolver {
             "userLoginHistory",
             req.session.userId,
             userLoginHistory,
-            error
-          );
-        }
-
-        const userTwinredConversionInformation = new UserTwinredConversionInformation();
-          userTwinredConversionInformation.campaign_id = campaign_id;
-          userTwinredConversionInformation.placement_id = placement_id;
-          userTwinredConversionInformation.site_id = site_id;
-          userTwinredConversionInformation.city = city;
-          userTwinredConversionInformation.operating_system = operating_system;
-          userTwinredConversionInformation.site_name = site_name;
-          userTwinredConversionInformation.user = saveUser;
-          
-        try {
-          await userTwinredConversionInformationRepository.save(userTwinredConversionInformation);
-        } catch (error) {
-          saveEntityError(
-            "registerUser",
-            "userTwinredConversionInformation",
-            req.session.userId,
-            userTwinredConversionInformation,
             error
           );
         }
